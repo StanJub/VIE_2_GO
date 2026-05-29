@@ -28,6 +28,7 @@ import os
 import threading
 from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Charge les variables d'environnement depuis .env
@@ -43,6 +44,7 @@ from unify_vie_offers import VIEUnifier
 OFFERS_FILE = "vie_offers.json"   # fichier cache JSON
 
 app = Flask(__name__)
+CORS(app)
 
 # ============================================================================
 # ÉTAT DU SCRAPING (partagé entre le thread et l'API)
