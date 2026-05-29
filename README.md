@@ -4,7 +4,7 @@ Le site de Business France pour chercher un VIE, c'est bien. Mais c'est pas prat
 
 Alors j'ai bricolé un truc simple pour agréger les offres, les filtrer, et les afficher correctement. C'est minimaliste, ça se prend pas au sérieux, et si ça peut être utile à quelqu'un d'autre — c'est tout le but.
 
-**👉 Tester en ligne : [](https://vie-2-go.onrender.com/)**
+**👉 Tester en ligne : [https://vie-2-go.onrender.com/](https://vie-2-go.onrender.com/)**
 
 ---
 
