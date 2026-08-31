@@ -30,6 +30,9 @@ from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
+import gspread
+from google.oauth2.service_account import Credentials
+import base64
 
 # Charge les variables d'environnement depuis .env
 load_dotenv()
@@ -57,6 +60,7 @@ scrape_status = {
     "finished_at": None,      # quand il s'est terminé
     "success": None,          # True / False / None (= jamais lancé)
     "total_offers": 0,        # nombre d'offres récupérées
+    "by_source": {},          # {"vie": 771, "wtj": 83} ou {"vie": "<erreur>"}
     "error": None             # message d'erreur si échec
 }
 
@@ -80,21 +84,46 @@ def run_scraping(source: str = "all"):
     scrape_status["success"] = None
     scrape_status["error"] = None
     scrape_status["total_offers"] = 0
+    scrape_status["by_source"] = {}
 
     try:
         unifier = VIEUnifier()
+        errors = []
 
-        if source in ("vie", "all"):
-            unifier.add_vie_offers()
-
-        if source in ("wtj", "all"):
-            unifier.add_wtj_offers()
+        # Chaque source est isolée : si l'une tombe, on récupère quand même
+        # l'autre — mais on garde trace de l'échec au lieu de l'avaler.
+        for name, fetch in (("vie", unifier.add_vie_offers),
+                            ("wtj", unifier.add_wtj_offers)):
+            if source not in (name, "all"):
+                continue
+            try:
+                scrape_status["by_source"][name] = fetch()
+            except Exception as e:
+                scrape_status["by_source"][name] = f"échec : {e}"
+                errors.append(f"{name} : {e}")
 
         unifier.deduplicate()
-        unifier.export_json(OFFERS_FILE)
 
-        scrape_status["total_offers"] = len(unifier.offers)
-        scrape_status["success"] = True
+        # Garde-fou : ne pas remplacer un cache correct par un export dégradé.
+        # Sans ça, une source qui tombe divise silencieusement le catalogue.
+        previous, _ = load_offers()
+        previous_total = len(previous["offers"]) if previous else 0
+        new_total = len(unifier.offers)
+
+        if errors and previous_total and new_total < previous_total / 2:
+            scrape_status["total_offers"] = previous_total
+            scrape_status["success"] = False
+            scrape_status["error"] = (
+                f"Scraping dégradé ({new_total} offres contre {previous_total} en cache) — "
+                f"cache conservé. Détail : " + " | ".join(errors)
+            )
+            return
+
+        unifier.export_json(OFFERS_FILE)
+        scrape_status["total_offers"] = new_total
+        scrape_status["success"] = not errors
+        if errors:
+            scrape_status["error"] = "Sources en échec : " + " | ".join(errors)
 
     except Exception as e:
         scrape_status["success"] = False
@@ -123,9 +152,83 @@ def load_offers():
     except json.JSONDecodeError:
         return None, "Le fichier cache est corrompu. Relancez un scraping."
 
+
+# ============================================================================
+# GOOGLE SHEETS — helper
+# ============================================================================
+
+def get_sheet():
+    """
+    Retourne l'onglet 'VIE' du Google Sheet configuré.
+    Les credentials sont stockés en variable d'environnement (base64).
+    """
+    creds_b64 = os.environ.get("GOOGLE_CREDENTIALS_B64")
+    spreadsheet_id = os.environ.get("GOOGLE_SHEET_ID")
+
+    if not creds_b64 or not spreadsheet_id:
+        raise ValueError("Variables GOOGLE_CREDENTIALS_B64 ou GOOGLE_SHEET_ID manquantes")
+
+    # Décode le JSON des credentials depuis la variable d'env
+    creds_json = base64.b64decode(creds_b64).decode("utf-8")
+    creds_dict = json.loads(creds_json)
+
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    client = gspread.authorize(creds)
+
+    spreadsheet = client.open_by_key(spreadsheet_id)
+    return spreadsheet.worksheet("VIE")
+
+
 # ============================================================================
 # ENDPOINTS
 # ============================================================================
+
+# Endpoint pour ajouter une annonce dans Google Sheets
+
+@app.route("/api/add-to-sheet", methods=["POST"])
+def add_to_sheet():
+    """
+    Ajoute une annonce dans l'onglet 'VIE' du Google Sheet.
+
+    Body JSON attendu :
+        {
+            "title":            "Chef de projet digital",
+            "company":          "Air Liquide",
+            "country":          "Japon",
+            "city":             "Tokyo",
+            "duration_months":  12
+        }
+
+    Colonnes écrites : Poste | Entreprise | Lieu | Durée
+    """
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({"error": "Body JSON manquant"}), 400
+
+    # Construit la ligne : Poste | Entreprise | Lieu | Durée
+    lieu = body.get("city") or body.get("country") or "—"
+    duree = body.get("duration_months")
+    duree_str = f"{duree} mois" if duree else "—"
+
+    row = [
+        body.get("title", "—"),
+        body.get("company", "—"),
+        lieu,
+        duree_str,
+    ]
+
+    try:
+        sheet = get_sheet()
+        sheet.append_row(row, value_input_option="USER_ENTERED")
+        return jsonify({"success": True, "row": row}), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": f"Erreur Google Sheets : {str(e)}"}), 500
+    
+# Endpoint pour servir le frontend (index.html)
 
 @app.route("/", methods=["GET"])
 def serve_frontend():
