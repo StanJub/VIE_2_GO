@@ -35,6 +35,14 @@ except ImportError:
 # MODÈLE DE DONNÉES UNIFIÉ
 # ============================================================================
 
+class ScrapingError(RuntimeError):
+    """
+    Erreur irrécupérable sur une source.
+    Levée plutôt qu'avalée : sans ça, une source qui tombe produit
+    silencieusement 0 offre et le cache est écrasé par un export dégradé.
+    """
+
+
 class OfferSource(Enum):
     """Sources possibles pour une annonce"""
     VIE = "Business France (VIE)"
@@ -163,7 +171,9 @@ class VIEScraper:
     
     API_BASE_URL = "https://civiweb-api-prd.azurewebsites.net/api/Offers/search"
     SITE_BASE_URL = "https://mon-vie-via.businessfrance.fr"
-    
+    # Page publique dont la config Nuxt embarque la clé d'API du site
+    CONFIG_PAGE_URL = f"{SITE_BASE_URL}/offres/recherche"
+
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
@@ -171,35 +181,94 @@ class VIEScraper:
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
-    
-    def search_offers(self, skip=0, limit=100):
-        """Effectue une recherche d'annonces via l'API Azure"""
-        try:
-            payload = {
-                "limit": limit,
-                "skip": skip,
-                "query": None,
-                "specializationsIds": [],
-                "teletravail": ["0"],
-                "porteEnv": ["0"],
-                "activitySectorId": [],
-                "missionsTypesIds": [],
-                "missionsDurations": [],
-                "geographicZones": [],
-                "countriesIds": [],
-                "studiesLevelId": [],
-                "companiesSizes": [],
-                "entreprisesIds": [0],
-                "missionStartDate": None
-            }
-            
-            response = self.session.post(self.API_BASE_URL, json=payload, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            print(f"  ✗ Erreur API: {e}")
+        self.refresh_api_key()
+
+    def refresh_api_key(self) -> Optional[str]:
+        """
+        Business France a fermé son API derrière un header X-API-KEY : sans lui,
+        tous les endpoints répondent 401 (WWW-Authenticate: Bearer).
+
+        La clé est celle que le site public envoie depuis le navigateur de chaque
+        visiteur — elle est exposée dans la config Nuxt de la page de recherche
+        (window.__NUXT__.config.API_KEY). On la relit à chaque scraping pour
+        survivre à ses rotations.
+
+        CIVIWEB_API_KEY (variable d'env) permet de figer une valeur si besoin.
+        """
+        key = os.getenv('CIVIWEB_API_KEY')
+
+        if not key:
+            try:
+                response = requests.get(
+                    self.CONFIG_PAGE_URL,
+                    timeout=15,
+                    headers={'User-Agent': self.session.headers['User-Agent']}
+                )
+                response.raise_for_status()
+                # La clé est une chaîne JSON échappée dans le payload Nuxt
+                match = re.search(r'API_KEY\s*:\s*("(?:[^"\\]|\\.)*")', response.text)
+                key = json.loads(match.group(1)) if match else None
+            except Exception as e:
+                print(f"  ✗ Impossible de lire la clé d'API sur {self.CONFIG_PAGE_URL}: {e}")
+                key = None
+
+        if not key:
             return None
-    
+
+        self.session.headers['X-API-KEY'] = key
+        print("  ✓ Clé d'API Business France récupérée")
+        return key
+
+    def search_offers(self, skip=0, limit=100):
+        """
+        Effectue une recherche d'annonces via l'API Azure.
+        Lève ScrapingError si l'API est inutilisable — l'appelant doit le savoir.
+        """
+        payload = {
+            "limit": limit,
+            "skip": skip,
+            "query": None,
+            "specializationsIds": [],
+            "teletravail": ["0"],
+            "porteEnv": ["0"],
+            "activitySectorId": [],
+            "missionsTypesIds": [],
+            "missionsDurations": [],
+            "geographicZones": [],
+            "countriesIds": [],
+            "studiesLevelId": [],
+            "companiesSizes": [],
+            "entreprisesIds": [0],
+            "missionStartDate": None
+        }
+
+        for attempt in (1, 2):
+            try:
+                response = self.session.post(self.API_BASE_URL, json=payload, timeout=20)
+            except requests.RequestException as e:
+                raise ScrapingError(f"API Business France injoignable : {e}") from e
+
+            # 401 = clé absente, expirée ou tournée → on la relit et on retente une fois
+            if response.status_code == 401 and attempt == 1:
+                print("  ⚠️  401 — la clé d'API a peut-être tourné, nouvelle tentative")
+                if self.refresh_api_key():
+                    continue
+                raise ScrapingError(
+                    "API Business France : 401 et clé X-API-KEY introuvable "
+                    "(le format de la page de recherche a peut-être changé)"
+                )
+
+            if not response.ok:
+                raise ScrapingError(
+                    f"API Business France : HTTP {response.status_code}"
+                )
+
+            try:
+                return response.json()
+            except ValueError as e:
+                raise ScrapingError(f"Réponse non-JSON de l'API Business France : {e}") from e
+
+
     def get_all_offers(self) -> List[Dict]:
         """Récupère TOUTES les annonces VIE avec pagination"""
         all_offers = []
@@ -210,14 +279,17 @@ class VIEScraper:
         
         while True:
             result = self.search_offers(skip=skip, limit=limit)
-            
-            if result is None:
-                break
-            
+
             offers = result.get('result', [])
             if not offers:
+                # Zéro offre dès la 1re page = anomalie (l'API en publie des centaines)
+                if skip == 0:
+                    raise ScrapingError(
+                        "API Business France : 0 offre renvoyée — "
+                        "le format de la réponse a probablement changé"
+                    )
                 break
-            
+
             all_offers.extend(offers)
             print(f"  ✓ {len(offers)} annonces (skip={skip}, total={len(all_offers)})")
             
@@ -351,36 +423,49 @@ class WTJScraper:
         })
     
     def search_offers(self, page=0, hits_per_page=100):  # ✅ hits_per_page monté à 100
-        """Effectue une recherche via Algolia"""
+        """
+        Effectue une recherche via Algolia.
+        Lève ScrapingError si l'API est inutilisable — l'appelant doit le savoir.
+        """
+        payload = {
+            "requests": [
+                {
+                    "indexName": "wttj_jobs_production_fr",
+                    "params": (
+                        f"attributesToHighlight=%5B%22name%22%5D&"
+                        f"attributesToRetrieve=%5B%22*%22%2C%22-has_benefits%22%2C%22-has_contract_duration%22%2C%22-has_education_level%22%2C%22-has_experience_level_minimum%22%2C%22-has_remote%22%2C%22-has_salary_yearly_minimum%22%2C%22-new_profession%22%2C%22-organization.description%22%2C%22-organization_score%22%2C%22-profile%22%2C%22-rank_group_1%22%2C%22-rank_group_2%22%2C%22-rank_group_3%22%2C%22-source_stage%22%5D&"
+                        f"clickAnalytics=true&"
+                        f"hitsPerPage={hits_per_page}&"
+                        f"maxValuesPerFacet=999&"
+                        f"responseFields=%5B%22facets%22%2C%22hits%22%2C%22hitsPerPage%22%2C%22nbHits%22%2C%22nbPages%22%2C%22page%22%2C%22params%22%2C%22query%22%5D&"
+                        f"analytics=true&"
+                        f"enableABTest=true&"
+                        f"facets=%5B%22*%22%5D&"
+                        f"filters=(%22contract_type%22%3A%22vie%22)&"
+                        f"page={page}&"
+                        f"query="
+                    )
+                }
+            ]
+        }
+
         try:
-            payload = {
-                "requests": [
-                    {
-                        "indexName": "wttj_jobs_production_fr",
-                        "params": (
-                            f"attributesToHighlight=%5B%22name%22%5D&"
-                            f"attributesToRetrieve=%5B%22*%22%2C%22-has_benefits%22%2C%22-has_contract_duration%22%2C%22-has_education_level%22%2C%22-has_experience_level_minimum%22%2C%22-has_remote%22%2C%22-has_salary_yearly_minimum%22%2C%22-new_profession%22%2C%22-organization.description%22%2C%22-organization_score%22%2C%22-profile%22%2C%22-rank_group_1%22%2C%22-rank_group_2%22%2C%22-rank_group_3%22%2C%22-source_stage%22%5D&"
-                            f"clickAnalytics=true&"
-                            f"hitsPerPage={hits_per_page}&"
-                            f"maxValuesPerFacet=999&"
-                            f"responseFields=%5B%22facets%22%2C%22hits%22%2C%22hitsPerPage%22%2C%22nbHits%22%2C%22nbPages%22%2C%22page%22%2C%22params%22%2C%22query%22%5D&"
-                            f"analytics=true&"
-                            f"enableABTest=true&"
-                            f"facets=%5B%22*%22%5D&"
-                            f"filters=(%22contract_type%22%3A%22vie%22)&"
-                            f"page={page}&"
-                            f"query="
-                        )
-                    }
-                ]
-            }
-            
-            response = self.session.post(self.WTJ_API_URL, json=payload, timeout=10)
-            response.raise_for_status()
+            response = self.session.post(self.WTJ_API_URL, json=payload, timeout=20)
+        except requests.RequestException as e:
+            raise ScrapingError(f"API Welcome to the Jungle injoignable : {e}") from e
+
+        if response.status_code in (401, 403):
+            raise ScrapingError(
+                f"API Welcome to the Jungle : HTTP {response.status_code} — "
+                "les clés ALGOLIA_APP_ID / ALGOLIA_API_KEY sont probablement périmées"
+            )
+        if not response.ok:
+            raise ScrapingError(f"API Welcome to the Jungle : HTTP {response.status_code}")
+
+        try:
             return response.json()
-        except Exception as e:
-            print(f"  ✗ Erreur API: {e}")
-            return None
+        except ValueError as e:
+            raise ScrapingError(f"Réponse non-JSON de Welcome to the Jungle : {e}") from e
     
     def get_all_offers(self) -> List[Dict]:
         """Récupère TOUTES les annonces WTJ avec pagination"""
@@ -392,18 +477,18 @@ class WTJScraper:
         
         while True:
             result = self.search_offers(page=page, hits_per_page=hits_per_page)
-            
-            if result is None or 'results' not in result:
-                break
-            
+
             results = result.get('results', [])
-            if not results:
-                break
-            
-            hits = results[0].get('hits', [])
+            hits = results[0].get('hits', []) if results else []
             if not hits:
+                # Zéro offre dès la 1re page = anomalie (filtre ou index modifié)
+                if page == 0:
+                    raise ScrapingError(
+                        "API Welcome to the Jungle : 0 offre renvoyée — "
+                        "l'index ou le filtre contract_type=vie a probablement changé"
+                    )
                 break
-            
+
             all_offers.extend(hits)
             print(f"  ✓ {len(hits)} annonces (page={page}, total={len(all_offers)})")
             

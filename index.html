@@ -4,13 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VIE Radar</title>
+  <!-- Favicon en SVG inline : pas de requête réseau ni de 404 sur /favicon.ico -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.92em' font-size='92'>🌍</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --sidebar-w: 260px;
       --topbar-h: 72px;
       --bg: #f4f4f2;
       --surface: #ffffff;
@@ -99,54 +100,24 @@
       white-space: nowrap;
     }
     .tab-btn:hover { color: var(--text); background: rgba(0,0,0,0.04); }
-    .tab-btn svg { opacity: 0.45; transition: opacity 0.15s; }
-    .tab-btn.active svg, .tab-btn:hover svg { opacity: 1; }
     .tab-btn.active {
       background: var(--surface);
       color: var(--text);
       box-shadow: var(--shadow-sm);
     }
 
+    /* Logos officiels des sources (SVG inline, marque seule) */
     .tab-logo {
-      height: 18px;
-      width: auto;
-      object-fit: contain;
-      opacity: 0.5;
-      transition: opacity 0.15s;
+      display: block;
+      height: 20px; width: 20px;
       flex-shrink: 0;
+      /* Désaturé tant que l'onglet est inactif, couleurs de marque une fois actif */
+      filter: grayscale(1);
+      opacity: 0.45;
+      transition: opacity 0.15s, filter 0.15s;
     }
-    .tab-btn.active .tab-logo { opacity: 1; }
-
-    /* Logo BF en SVG inline */
-    .tab-logo-bf {
-      width: 26px; height: 26px;
-      display: flex; align-items: center; justify-content: center;
-      background: #00408c;
-      border-radius: 3px;
-      flex-shrink: 0;
-      opacity: 0.5;
-      transition: opacity 0.15s;
-    }
-    .tab-btn.active .tab-logo-bf { opacity: 1; }
-    .tab-logo-bf span {
-      font-size: 9px; font-weight: 700; color: #fff;
-      font-family: 'Inter', sans-serif; letter-spacing: -0.5px;
-    }
-
-    .tab-logo-wtj {
-      width: 26px; height: 26px;
-      display: flex; align-items: center; justify-content: center;
-      background: #3d1173;
-      border-radius: 3px;
-      flex-shrink: 0;
-      opacity: 0.5;
-      transition: opacity 0.15s;
-    }
-    .tab-btn.active .tab-logo-wtj { opacity: 1; }
-    .tab-logo-wtj span {
-      font-size: 9px; font-weight: 700; color: #fff;
-      font-family: 'Inter', sans-serif; letter-spacing: -0.5px;
-    }
+    .tab-btn.active .tab-logo,
+    .tab-btn:hover .tab-logo { filter: none; opacity: 1; }
 
     .tab-count {
       font-size: 11px;
@@ -220,55 +191,168 @@
     }
 
     /* ══════════════════════════════════════════════════
-       SIDEBAR
+       BARRE DE FILTRES (horizontale, sous la topbar)
     ══════════════════════════════════════════════════ */
-    .sidebar {
-      width: var(--sidebar-w);
-      flex-shrink: 0;
+    .filterbar {
       background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-
-    .sidebar-section {
-      padding: 16px 16px 0;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 16px;
-    }
-    .sidebar-section:last-child { border-bottom: none; }
-
-    .sidebar-label {
-      font-size: 10.5px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-    }
-
-    /* Stats résumé dans la sidebar */
-    .sidebar-stats {
+      padding: 10px 32px;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      position: sticky;
+      top: var(--topbar-h);
+      z-index: 50;
+      flex-shrink: 0;
     }
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .stat-label { font-size: 12px; color: var(--text-secondary); }
-    .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
 
-    .mini-bar {
-      height: 3px; border-radius: 2px;
-      background: var(--border);
-      margin-top: 2px; overflow: hidden;
+    .filterbar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
-    .mini-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+    /* La recherche prend la place restante, les autres champs sont fixes */
+    .filterbar .search-wrap { flex: 1 1 220px; min-width: 180px; }
+
+    .filterbar input[type="text"],
+    .dd-toggle {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+      height: 34px;
+    }
+    .filterbar input[type="text"] { width: 100%; padding-left: 32px; }
+    .filterbar input[type="text"]:focus { border-color: var(--border-md); }
+    .filterbar input[type="text"]::placeholder { color: var(--text-muted); }
+
+    /* Sens du tri */
+    .btn-sortdir {
+      height: 34px; width: 34px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer; font-size: 13px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-sortdir:hover { border-color: var(--border-md); color: var(--text); }
+
+    .filterbar-spacer { flex: 1 1 auto; }
+
+    /* Le libellé, le menu et le sens du tri restent solidaires */
+    .sort-group {
+      display: inline-flex; align-items: center; gap: 8px;
+      flex-wrap: nowrap; flex-shrink: 0;
+    }
+    .sort-label {
+      font-size: 12px; color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* ══════════════════════════════════════════════════
+       DROPDOWNS — un seul composant pour pays, durée,
+       secteur et tri (le sélecteur pays sert de modèle)
+    ══════════════════════════════════════════════════ */
+    .dd { position: relative; flex-shrink: 0; }
+
+    .dd-toggle {
+      display: inline-flex; align-items: center; gap: 7px;
+      cursor: pointer; white-space: nowrap;
+      padding-right: 28px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    .dd-toggle:hover { border-color: var(--border-md); }
+    /* Un filtre actif se signale par une bordure accentuée */
+    .dd-toggle.has-selection {
+      border-color: var(--accent);
+      background-color: var(--surface);
+    }
+    .dd.open .dd-toggle { border-color: var(--border-md); }
+
+    .dd-badge {
+      background: var(--accent); color: #fff;
+      font-size: 10.5px; font-weight: 600;
+      border-radius: 100px; padding: 1px 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .dd-panel {
+      display: none;
+      position: absolute; top: calc(100% + 4px); left: 0;
+      min-width: 100%; width: max-content; max-width: calc(100vw - 16px);
+      background: var(--surface);
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      z-index: 120;
+      overflow: hidden;
+    }
+    .dd.open .dd-panel { display: block; }
+    /* Les dropdowns collés à droite s'ouvrent vers la gauche */
+    .dd.align-right .dd-panel { left: auto; right: 0; }
+    .dd-panel.wide { width: 290px; }
+
+    .dd-search {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dd-search input {
+      width: 100%; height: 30px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      font-family: 'Inter', sans-serif; font-size: 12.5px;
+      padding: 0 8px; outline: none; color: var(--text);
+    }
+
+    .dd-list { max-height: 260px; overflow-y: auto; }
+    .dd-opt {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px;
+      font-size: 12.5px; color: var(--text-secondary);
+      cursor: pointer; user-select: none;
+      white-space: nowrap;
+    }
+    .dd-opt:hover { background: var(--bg); }
+    .dd-opt input { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .dd-opt-label { flex: 1; color: var(--text); }
+    .dd-opt-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--text-muted);
+      padding-left: 10px;
+    }
+    /* Choix unique : coche à droite plutôt qu'une case */
+    .dd-opt.selected { background: var(--bg); }
+    .dd-opt.selected .dd-opt-label { font-weight: 500; }
+    .dd-check { color: var(--accent); font-size: 12px; visibility: hidden; }
+    .dd-opt.selected .dd-check { visibility: visible; }
+
+    .dd-empty { padding: 14px 10px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+
+    .dd-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 8px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .dd-footer button {
+      background: none; border: none;
+      font-family: 'Inter', sans-serif; font-size: 12px;
+      color: var(--text-secondary); cursor: pointer;
+      padding: 3px 6px; border-radius: var(--radius-xs);
+    }
+    .dd-footer button:hover { background: var(--border); color: var(--text); }
 
     /* Recherche */
     .search-wrap {
@@ -279,105 +363,62 @@
       color: var(--text-muted); pointer-events: none;
       font-size: 13px;
     }
-    .sidebar input[type="text"] {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: 13px;
-      padding: 7px 10px 7px 32px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .sidebar input[type="text"]:focus { border-color: var(--border-md); }
-    .sidebar input[type="text"]::placeholder { color: var(--text-muted); }
-
-    /* Select */
-    .sidebar select {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: 13px;
-      padding: 7px 10px;
-      outline: none;
-      transition: border-color 0.15s;
-      cursor: pointer;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 10px center;
-      padding-right: 28px;
-    }
-    .sidebar select:focus { border-color: var(--border-md); }
-
-    .filter-stack { display: flex; flex-direction: column; gap: 8px; }
-    .filter-label {
-      font-size: 11px; color: var(--text-muted);
-      margin-bottom: 4px; display: block;
-    }
-
-    /* Zones chips */
+    /* Zones — segmented control, même langage visuel que les onglets de la topbar */
     .zone-chips {
-      display: flex; flex-wrap: wrap; gap: 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      height: 34px;
+      padding: 3px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
     }
     .zone-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 9px; border-radius: 100px;
-      border: 1px solid var(--border);
-      font-size: 11.5px; color: var(--text-secondary);
-      cursor: pointer; background: var(--bg);
-      transition: all 0.12s; user-select: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 26px; padding: 0 9px;
+      border: none; background: none;
+      border-radius: var(--radius-xs);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; color: var(--text-muted);
+      cursor: pointer; user-select: none;
       white-space: nowrap;
+      transition: background 0.12s, color 0.12s;
     }
-    .zone-chip:hover { border-color: var(--border-md); color: var(--text); }
+    .zone-chip:hover { background: rgba(0,0,0,0.04); color: var(--text); }
     .zone-chip.active {
-      background: var(--accent); color: #fff; border-color: var(--accent);
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 500;
+      box-shadow: var(--shadow-sm);
     }
 
-    /* Tri */
-    .sort-options { display: flex; flex-direction: column; gap: 2px; }
-    .sort-opt {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 8px; border-radius: var(--radius-xs);
-      cursor: pointer; transition: background 0.1s;
-      font-size: 12.5px; color: var(--text-secondary);
-      user-select: none;
+    /* Volume d'offres par zone — même code visuel que les compteurs
+       d'onglets, de pays et de secteurs */
+    .zone-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      color: var(--text-muted);
+      font-weight: 400;
     }
-    .sort-opt:hover { background: var(--bg); }
-    .sort-opt.active { background: var(--bg); color: var(--text); font-weight: 500; }
-    .sort-arrow { font-size: 11px; color: var(--text-muted); }
+    .zone-chip.active .zone-count { color: var(--text-secondary); }
+    /* Une zone sans résultat sous les filtres courants s'efface */
+    .zone-chip.is-empty { opacity: 0.4; }
+    .zone-chip.is-empty:hover { background: none; color: var(--text-muted); }
 
-    /* Reset */
+    /* Réinitialiser — masqué tant qu'aucun filtre n'est actif */
     .btn-reset {
-      width: 100%; padding: 7px;
+      height: 34px; padding: 0 12px;
       background: none; border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       font-family: 'Inter', sans-serif; font-size: 12.5px;
       color: var(--text-secondary); cursor: pointer;
       transition: all 0.15s;
+      white-space: nowrap; flex-shrink: 0;
     }
     .btn-reset:hover { border-color: var(--border-md); color: var(--text); }
-
-    /* Top secteurs & pays mini dans sidebar */
-    .top-list { display: flex; flex-direction: column; gap: 6px; }
-    .top-item {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px;
-    }
-    .top-item-label { flex: 1; color: var(--text-secondary); }
-    .top-item-bar {
-      width: 60px; height: 3px; border-radius: 2px; background: var(--border); flex-shrink: 0;
-    }
-    .top-item-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); opacity: 0.3; }
-    .top-item-count {
-      font-family: 'JetBrains Mono', monospace; font-size: 11px;
-      color: var(--text-muted); min-width: 24px; text-align: right;
-    }
+    .btn-reset[hidden] { display: none; }
 
     /* ══════════════════════════════════════════════════
        CONTENU PRINCIPAL
@@ -387,40 +428,6 @@
       overflow-y: auto;
       overflow-x: hidden;
     }
-
-    .content-header {
-      padding: 16px 24px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
-      position: sticky;
-      top: var(--topbar-h);
-      z-index: 10;
-    }
-
-    .result-count {
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-    .result-count strong { color: var(--text); font-weight: 600; }
-
-    .active-filters {
-      display: flex; gap: 6px; flex-wrap: wrap;
-    }
-    .filter-tag {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 2px 8px; border-radius: 100px;
-      background: var(--accent); color: #fff;
-      font-size: 11.5px; font-weight: 500;
-    }
-    .filter-tag button {
-      background: none; border: none; color: rgba(255,255,255,0.7);
-      cursor: pointer; font-size: 13px; line-height: 1; padding: 0;
-    }
-    .filter-tag button:hover { color: #fff; }
 
     .offers-list { padding: 16px 20px 48px; }
 
@@ -438,8 +445,10 @@
       border: 1px solid var(--border);
       border-radius: var(--radius) var(--radius) 0 0;
       border-bottom: 2px solid var(--border-md);
+      /* colle en haut de la zone scrollable (la topbar et la barre de filtres
+         sont en dehors du conteneur de défilement) */
       position: sticky;
-      top: var(--topbar-h);
+      top: 0;
       z-index: 5;
     }
     .country-flag { font-size: 20px; line-height: 1; }
@@ -554,17 +563,7 @@
     }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-    /* ══════════════════════════════════════════════════
-       OVERLAY SIDEBAR
-    ══════════════════════════════════════════════════ */
-    .sidebar-overlay {
-      display: none;
-      position: fixed; inset: 0; z-index: 150;
-      background: rgba(0,0,0,0.35);
-    }
-    .sidebar-overlay.visible { display: block; }
-
-    /* Bouton filtre (mobile uniquement) */
+    /* Bouton d'ouverture des filtres (mobile uniquement) */
     .btn-filter {
       display: none;
       align-items: center; gap: 6px;
@@ -578,20 +577,6 @@
       flex-shrink: 0;
     }
     .btn-filter:hover { border-color: var(--border-md); color: var(--text); }
-
-    /* Bouton fermer la sidebar (mobile uniquement) */
-    .sidebar-close {
-      display: none;
-      align-self: flex-end;
-      margin: 12px 12px 4px;
-      padding: 5px 10px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      font-size: 12px; color: var(--text-secondary);
-      cursor: pointer; font-family: 'Inter', sans-serif;
-      transition: all 0.15s; flex-shrink: 0;
-    }
-    .sidebar-close:hover { border-color: var(--border-md); color: var(--text); }
 
     /* ══════════════════════════════════════════════════
        RESPONSIVE
@@ -607,31 +592,42 @@
 
       .last-update { display: none; }
       .btn-filter { display: inline-flex; }
-      .sidebar-close { display: block; }
 
-      .sidebar {
-        position: fixed;
-        left: 0; top: 0; bottom: 0;
-        z-index: 200;
-        width: min(300px, 85vw);
-        height: 100%;
-        transform: translateX(-100%);
-        transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
-        display: flex;
-        box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+      /* La barre de filtres est repliée par défaut et se déploie au bouton ⚙ */
+      .filterbar { display: none; padding: 10px 16px; }
+      .filterbar.open { display: flex; }
+      .filterbar .search-wrap { flex-basis: 100%; }
+      .dd { flex: 1 1 auto; min-width: 0; }
+      .dd-toggle { width: 100%; }
+      .filterbar-spacer { display: none; }
+
+      /* Les zones défilent horizontalement plutôt que de tronquer les libellés */
+      .zone-chips {
+        flex-basis: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scrollbar-width: none;
       }
-      .sidebar.open { transform: translateX(0); }
+      .zone-chips::-webkit-scrollbar { display: none; }
+      .zone-chip { flex-shrink: 0; padding: 0 8px; }
+      .zone-count { display: none; }
 
-      .content-header { padding: 10px 16px; top: 0; }
       .offers-list { padding: 12px 12px 48px; }
     }
 
     @media (max-width: 480px) {
+      /* Le titre se réduit à « VIE 🌍 » pour laisser passer les onglets,
+         le bouton Filtres et le bouton Rafraîchir sans débordement */
+      .topbar { padding: 0 12px; gap: 8px; }
       .topbar-logo { font-size: 14px; }
+      .logo-long { display: none; }
+      .topbar-right { gap: 8px; }
+      .topbar-tabs { margin-left: 0; }
       .tab-text { display: none; }
       .tab-btn { padding: 6px 10px; }
       .btn-text { display: none; }
       .btn-scrape { padding: 7px 10px; }
+      .btn-filter { padding: 7px 10px; }
     }
   </style>
 </head>
@@ -639,29 +635,16 @@
 
 <!-- ══ TOPBAR ══════════════════════════════════════════════════════════════ -->
 <div class="topbar">
-  <div class="topbar-logo">À la recherche d'un <em>VIE</em> 🌍</div>
+  <div class="topbar-logo"><span class="logo-long">À la recherche d'un </span><em>VIE</em> 🌍</div>
 
   <div class="topbar-tabs">
     <button class="tab-btn active" id="tab-vie" onclick="switchTab('vie')">
-      <svg width="48" height="24" viewBox="0 0 48 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;opacity:inherit">
-  <!-- Drapeau FR miniature -->
-  <rect x="0" y="2" width="6" height="20" rx="1" fill="#002395"/>
-  <rect x="6" y="2" width="6" height="20" fill="#EDEDED"/>
-  <rect x="12" y="2" width="6" height="20" rx="1" fill="#ED2939" style="border-radius:0 1px 1px 0"/>
-  <!-- Texte BF -->
-  <text x="22" y="16" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="currentColor" opacity="0.85">BF</text>
-</svg>
+      <svg class="tab-logo" viewBox="91 12.86 29.41 29.42" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Business France"><path fill="#000091" d="M103.686 34.8247L108.322 30.1882L103.084 24.95L98.4475 29.5866V20.3135H98.3438C94.2881 20.3135 91 23.6016 91 27.6676V39.2953C91 40.9446 92.3277 42.2723 93.9769 42.2723H105.615C109.671 42.2723 112.959 38.9842 112.959 34.9181V34.8351H103.686V34.8247Z"/><path fill="#E1000F" d="M107.721 20.3035L103.084 24.94L108.322 30.1782L112.959 25.5416V34.8147H113.063C117.118 34.8147 120.406 31.5266 120.406 27.4606V15.8329C120.406 14.1836 119.079 12.856 117.43 12.856H105.791C101.736 12.856 98.4477 16.1441 98.4477 20.2101V20.2931H107.721V20.3035Z"/></svg>
       <span class="tab-text">Business France</span>
       <span class="tab-count" id="count-vie">—</span>
     </button>
     <button class="tab-btn" id="tab-wtj" onclick="switchTab('wtj')">
-      <svg width="56" height="24" viewBox="0 0 56 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;opacity:inherit">
-  <!-- Feuille stylisée WTJ -->
-  <path d="M4 20 C4 20 2 12 8 8 C8 8 6 16 12 18 C12 18 8 18 4 20Z" fill="#3d1173" opacity="0.8"/>
-  <path d="M4 20 C4 20 10 14 14 10 C14 10 10 18 4 20Z" fill="#6d28d9" opacity="0.6"/>
-  <!-- Texte WTJ -->
-  <text x="17" y="16" font-family="Inter,sans-serif" font-size="9.5" font-weight="700" fill="currentColor" opacity="0.85">WTJ</text>
-</svg>
+      <svg class="tab-logo" viewBox="0 0 25.38 25.38" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Welcome to the Jungle"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.686 0C5.691 0 0 5.691 0 12.686s5.691 12.686 12.686 12.686 12.686-5.691 12.686-12.686S19.681 0 12.686 0Zm0 1.09c.978 0 1.93.126 2.846.352-.351 3.02-1.33 6.43-2.846 6.43-1.517 0-2.495-3.41-2.846-6.43a11.132 11.132 0 0 1 2.846-.351ZM7.634 2.232c.715 2.909 2.921 6.343 5.04 6.356 2.13 0 4.324-3.435 5.039-6.356.576.276 1.128.602 1.654.978-1.115 2.633-3.585 6.356-6.694 6.443-3.096-.087-5.578-3.81-6.694-6.443.527-.363 1.079-.69 1.655-.978Zm5.052 22.063c-.978 0-1.93-.125-2.846-.351.351-3.021 1.33-6.43 2.846-6.43 1.517 0 2.495 3.409 2.846 6.43-.915.238-1.868.351-2.846.351Zm5.04-1.153c-.715-2.909-2.921-6.343-5.04-6.356-2.131 0-4.325 3.435-5.04 6.356a11.03 11.03 0 0 1-1.654-.978c1.116-2.633 3.585-6.356 6.694-6.443 3.096.087 5.578 3.81 6.694 6.443-.526.376-1.078.702-1.655.978Zm3.472-2.57c-1.555-2.32-4.914-5.566-8.512-5.566-3.598 0-6.957 3.247-8.512 5.566a12.098 12.098 0 0 1-1.165-1.48c1.642-2.118 5.089-5.164 9.677-5.164 4.576 0 8.035 3.046 9.677 5.165a12.1 12.1 0 0 1-1.165 1.479Zm3.083-7.885c0 1.467-.275 2.87-.777 4.162-2.62-2.181-6.644-3.623-10.83-3.623-4.187 0-8.211 1.442-10.831 3.635a11.475 11.475 0 0 1-.777-4.161c0-1.467.275-2.871.777-4.162 2.62 2.18 6.644 3.635 10.83 3.635 4.187 0 8.211-1.442 10.831-3.623a11.24 11.24 0 0 1 .777 4.137Zm-11.595-1.241c-4.575 0-8.035-3.046-9.677-5.165a12.1 12.1 0 0 1 1.165-1.479c1.555 2.32 4.914 5.566 8.512 5.566 3.598 0 6.957-3.247 8.512-5.566.426.464.814.953 1.153 1.48-1.642 2.118-5.09 5.164-9.665 5.164Zm70.45-2.181c-.15.288-.815 1.203-2.194 1.203-1.09 0-1.78-.576-2.08-1.479.15.013.313.025.463.025 2.144 0 3.56-.89 3.56-2.169 0-1.153-1.153-1.968-2.732-1.968-2.345 0-3.836 1.492-3.836 3.723 0 2.17 1.391 3.573 3.41 3.573 2.444 0 3.447-2.068 3.547-2.883.025-.1-.075-.15-.138-.025Zm-4.45-1.404c0-1.128.376-2.57 1.278-2.57.364 0 .602.364.59 1.128 0 1.279-.64 2.081-1.768 2.32-.05-.264-.1-.565-.1-.878Z"/></svg>
       <span class="tab-text">Welcome to the Jungle</span>
       <span class="tab-count" id="count-wtj">—</span>
     </button>
@@ -670,7 +653,7 @@
   <div class="topbar-right">
     <span class="last-update" id="last-update"></span>
     <span class="status-dot" id="status-dot"></span>
-    <button class="btn-filter" onclick="toggleSidebar()">⚙ Filtres</button>
+    <button class="btn-filter" onclick="toggleFilterbar()">⚙ Filtres</button>
     <button class="btn-scrape" id="btn-scrape" onclick="startScraping()">
       <span id="btn-label">↻ <span class="btn-text">Rafraîchir les annonces</span></span>
     </button>
@@ -679,140 +662,86 @@
 
 <div class="status-bar" id="status-bar"></div>
 
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<!-- ══ BARRE DE FILTRES ════════════════════════════════════════════════════ -->
+<div class="filterbar" id="filterbar">
+
+  <div class="filterbar-row">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="f-keyword" placeholder="Poste, mots-clés…" oninput="applyFilters()">
+    </div>
+
+    <!-- Pays : multi-sélection alimentée par les données -->
+    <div class="dd" id="dd-country">
+      <button type="button" class="dd-toggle" id="dd-country-toggle" onclick="toggleDropdown(event,'dd-country')">
+        <span id="dd-country-label">Pays</span>
+      </button>
+      <div class="dd-panel wide">
+        <div class="dd-search">
+          <input type="text" id="dd-country-search" placeholder="Chercher un pays…" oninput="renderCountryOptions()">
+        </div>
+        <div class="dd-list" id="dd-country-list"></div>
+        <div class="dd-footer">
+          <button type="button" onclick="clearCountries()">Tout décocher</button>
+          <button type="button" onclick="closeDropdowns()">Fermer</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="zone-chips">
+      <button type="button" class="zone-chip active" data-zone="" onclick="selectZone(this)">Toutes<span class="zone-count">—</span></button>
+      <button type="button" class="zone-chip" data-zone="europe" onclick="selectZone(this)">Europe<span class="zone-count">—</span></button>
+      <button type="button" class="zone-chip" data-zone="asie" onclick="selectZone(this)">Asie<span class="zone-count">—</span></button>
+      <button type="button" class="zone-chip" data-zone="ameriques" onclick="selectZone(this)">Amériques<span class="zone-count">—</span></button>
+      <button type="button" class="zone-chip" data-zone="afrique" onclick="selectZone(this)">Afrique<span class="zone-count">—</span></button>
+      <button type="button" class="zone-chip" data-zone="moyen-orient" onclick="selectZone(this)">Moyen-Orient<span class="zone-count">—</span></button>
+      <button type="button" class="zone-chip" data-zone="oceanie" onclick="selectZone(this)">Océanie<span class="zone-count">—</span></button>
+    </div>
+
+    <!-- Durée et secteur : même composant, choix unique -->
+    <div class="dd" id="dd-duration">
+      <button type="button" class="dd-toggle" id="dd-duration-toggle" onclick="toggleDropdown(event,'dd-duration')">
+        <span id="dd-duration-label">Durée</span>
+      </button>
+      <div class="dd-panel"><div class="dd-list" id="dd-duration-list"></div></div>
+    </div>
+
+    <div class="dd" id="dd-sector">
+      <button type="button" class="dd-toggle" id="dd-sector-toggle" onclick="toggleDropdown(event,'dd-sector')">
+        <span id="dd-sector-label">Secteur</span>
+      </button>
+      <div class="dd-panel wide">
+        <div class="dd-search">
+          <input type="text" id="dd-sector-search" placeholder="Chercher un secteur…" oninput="renderSectorOptions()">
+        </div>
+        <div class="dd-list" id="dd-sector-list"></div>
+      </div>
+    </div>
+
+    <button type="button" class="btn-reset" id="btn-reset" onclick="resetAll()" hidden>Réinitialiser</button>
+
+    <span class="filterbar-spacer"></span>
+
+    <!-- Groupé pour que le libellé ne se détache pas de son menu au retour à la ligne -->
+    <span class="sort-group">
+      <span class="sort-label">Trier par</span>
+      <div class="dd align-right" id="dd-sort">
+        <button type="button" class="dd-toggle" id="dd-sort-toggle" onclick="toggleDropdown(event,'dd-sort')">
+          <span id="dd-sort-label">Pays</span>
+        </button>
+        <div class="dd-panel"><div class="dd-list" id="dd-sort-list"></div></div>
+      </div>
+      <button type="button" class="btn-sortdir" id="btn-sortdir" onclick="toggleSortDir()" title="Inverser le sens du tri">↑</button>
+    </span>
+  </div>
+
+</div>
 
 <!-- ══ LAYOUT ══════════════════════════════════════════════════════════════ -->
 <div class="layout">
 
-  <!-- ── SIDEBAR ─────────────────────────────────────────────────────────── -->
-  <aside class="sidebar">
-    <button class="sidebar-close" onclick="closeSidebar()">✕ Fermer</button>
-
-    <!-- Recherche -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Recherche</div>
-      <div class="search-wrap">
-        <span class="search-icon">⌕</span>
-        <input type="text" id="f-keyword" placeholder="Poste, mots-clés…" oninput="applyFilters()">
-      </div>
-    </div>
-
-    <!-- Filtres -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Filtres</div>
-      <div class="filter-stack">
-        <div>
-          <span class="filter-label">Pays</span>
-          <div class="search-wrap">
-            <span class="search-icon">⌕</span>
-            <input type="text" id="f-country" placeholder="Japon, Allemagne…" oninput="applyFilters()">
-          </div>
-        </div>
-        <div>
-          <span class="filter-label">Durée</span>
-          <select id="f-duration" onchange="applyFilters()">
-            <option value="">Toutes les durées</option>
-            <option value="6">6 mois</option>
-            <option value="12">12 mois</option>
-            <option value="18">18 mois</option>
-            <option value="24">24 mois</option>
-          </select>
-        </div>
-        <div>
-          <span class="filter-label">Secteur</span>
-          <select id="f-sector" onchange="applyFilters()">
-            <option value="">Tous les secteurs</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- Zones géographiques -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Zone géographique</div>
-      <div class="zone-chips">
-        <span class="zone-chip active" data-zone="" onclick="selectZone(this)">🌐 Toutes</span>
-        <span class="zone-chip" data-zone="europe" onclick="selectZone(this)">🇪🇺 Europe</span>
-        <span class="zone-chip" data-zone="asie" onclick="selectZone(this)">🌏 Asie</span>
-        <span class="zone-chip" data-zone="ameriques" onclick="selectZone(this)">🌎 Amériques</span>
-        <span class="zone-chip" data-zone="afrique" onclick="selectZone(this)">🌍 Afrique</span>
-        <span class="zone-chip" data-zone="moyen-orient" onclick="selectZone(this)">🕌 Moyen-Orient</span>
-        <span class="zone-chip" data-zone="oceanie" onclick="selectZone(this)">🌊 Océanie</span>
-      </div>
-    </div>
-
-    <!-- Tri -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Trier par</div>
-      <div class="sort-options">
-        <div class="sort-opt active" data-sort="country" onclick="setSort('country', this)">
-          <span>Pays</span><span class="sort-arrow" id="arrow-country">↑</span>
-        </div>
-        <div class="sort-opt" data-sort="title" onclick="setSort('title', this)">
-          <span>Intitulé du poste</span><span class="sort-arrow" id="arrow-title"></span>
-        </div>
-        <div class="sort-opt" data-sort="company" onclick="setSort('company', this)">
-          <span>Entreprise</span><span class="sort-arrow" id="arrow-company"></span>
-        </div>
-        <div class="sort-opt" data-sort="sectors" onclick="setSort('sectors', this)">
-          <span>Secteur</span><span class="sort-arrow" id="arrow-sectors"></span>
-        </div>
-        <div class="sort-opt" data-sort="duration_months" onclick="setSort('duration_months', this)">
-          <span>Durée</span><span class="sort-arrow" id="arrow-duration_months"></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats rapides -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Aperçu</div>
-      <div class="sidebar-stats">
-        <div class="stat-row">
-          <span class="stat-label">Total</span>
-          <span class="stat-val" id="d-total">—</span>
-        </div>
-        <div class="mini-bar">
-          <div class="mini-bar-fill" id="d-bar-fill" style="width:0%;background:#1d4ed8"></div>
-        </div>
-        <div class="stat-row" style="margin-top:2px">
-          <span class="stat-label" style="font-size:11px;color:var(--text-muted)">🔵 BF <span id="d-vie-pct">—</span></span>
-          <span class="stat-label" style="font-size:11px;color:var(--text-muted)">🟢 WTJ <span id="d-wtj-pct">—</span></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Top pays -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Top pays</div>
-      <div class="top-list" id="sidebar-top-countries">
-        <div style="color:var(--text-muted);font-size:12px">—</div>
-      </div>
-    </div>
-
-    <!-- Top secteurs -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Top secteurs</div>
-      <div class="top-list" id="sidebar-top-sectors">
-        <div style="color:var(--text-muted);font-size:12px">—</div>
-      </div>
-    </div>
-
-    <!-- Reset -->
-    <div class="sidebar-section">
-      <button class="btn-reset" onclick="resetAll()">Réinitialiser les filtres</button>
-    </div>
-
-  </aside>
-
   <!-- ── CONTENU ──────────────────────────────────────────────────────────── -->
   <div class="main-content">
-
-    <div class="content-header">
-      <div class="result-count">
-        <strong id="stat-count">—</strong> offres affichées
-      </div>
-      <div class="active-filters" id="active-filters"></div>
-    </div>
 
     <div class="offers-list" id="offers-list">
       <div class="empty-state">
@@ -833,6 +762,16 @@ let currentTab  = "vie";
 let currentZone = "";
 let currentSort = { key: "country", asc: true };
 let pollInterval = null;
+
+// Filtre pays : index [{key, label, count}] construit depuis les données,
+// et l'ensemble des clés cochées (clés = pays en minuscules).
+let countryIndex = [];
+let selectedCountries = new Set();
+
+// Durée et secteur : l'état vit en JS, les dropdowns ne sont plus des <select>
+let sectorIndex = [];
+let filterDuration = "";
+let filterSector = "";
 
 // ── ICÔNES SECTEURS ─────────────────────────────────────────────────────────
 const SECTOR_ICONS = {
@@ -905,6 +844,12 @@ const FLAGS = {
   "guinée":"🇬🇳","guinea":"🇬🇳","madagascar":"🇲🇬","mozambique":"🇲🇿","angola":"🇦🇴",
   "egypte":"🇪🇬","égypte":"🇪🇬","egypt":"🇪🇬","libye":"🇱🇾","libya":"🇱🇾",
   "mauritanie":"🇲🇷","niger":"🇳🇪","tchad":"🇹🇩","chad":"🇹🇩",
+  "bénin":"🇧🇯","togo":"🇹🇬","gabon":"🇬🇦","congo":"🇨🇬",
+  "république démocratique du congo":"🇨🇩","rd congo":"🇨🇩",
+  "maurice":"🇲🇺","mauritius":"🇲🇺","île maurice":"🇲🇺",
+  "namibie":"🇳🇦","namibia":"🇳🇦","botswana":"🇧🇼","zimbabwe":"🇿🇼",
+  "zambie":"🇿🇲","zambia":"🇿🇲","seychelles":"🇸🇨","djibouti":"🇩🇯",
+  "burundi":"🇧🇮","soudan":"🇸🇩","sudan":"🇸🇩",
   "arabie saoudite":"🇸🇦","saudi arabia":"🇸🇦",
   "émirats arabes unis":"🇦🇪","emirats arabes unis":"🇦🇪","uae":"🇦🇪","united arab emirates":"🇦🇪",
   "qatar":"🇶🇦","koweït":"🇰🇼","koweit":"🇰🇼","kuwait":"🇰🇼",
@@ -916,12 +861,22 @@ const FLAGS = {
   "papouasie":"🇵🇬","fidji":"🇫🇯","fiji":"🇫🇯",
 };
 
+/**
+ * Minuscules sans accents. Business France écrit les pays en capitales non
+ * accentuées ("SUEDE", "GRECE", "COREE DU SUD") : sans cette normalisation,
+ * ils ne correspondent ni aux drapeaux ni aux zones géographiques.
+ */
+function deburr(s) {
+  return (s || "").toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Index sans accents, construit une fois (getFlag est appelé par offre affichée)
+const FLAGS_ND = Object.entries(FLAGS).map(([k, f]) => [deburr(k), f]);
+
 function getFlag(country) {
-  const low = (country || "").toLowerCase().trim();
-  if (FLAGS[low]) return FLAGS[low];
-  for (const [k, f] of Object.entries(FLAGS)) {
-    if (low.includes(k) || k.includes(low)) return f;
-  }
+  const low = deburr(country);
+  for (const [k, f] of FLAGS_ND) if (k === low) return f;
+  for (const [k, f] of FLAGS_ND) if (low.includes(k) || k.includes(low)) return f;
   return "🏳️";
 }
 
@@ -949,21 +904,43 @@ const ZONES = {
             "senegal","côte d'ivoire","cote d'ivoire","ivory coast","cameroun","cameroon",
             "kenya","afrique du sud","south africa","nigeria","ghana","éthiopie","ethiopie",
             "ethiopia","tanzanie","rwanda","mali","burkina","guinée","madagascar","mozambique",
-            "angola","egypte","égypte","egypt","libye","mauritanie","niger","tchad"],
+            "angola","egypte","égypte","egypt","libye","mauritanie","niger","tchad",
+            "bénin","togo","gabon","congo","maurice","mauritius","namibie","namibia",
+            "botswana","zimbabwe","zambie","seychelles","djibouti","burundi","soudan"],
   "moyen-orient": ["arabie saoudite","saudi","émirats","emirats","uae","qatar","koweït","koweit",
                    "kuwait","bahreïn","bahrein","oman","jordanie","jordan","liban","lebanon",
                    "israël","israel","turquie","turkey","iran","irak","iraq","yémen"],
   oceanie: ["australie","australia","nouvelle-zélande","new zealand","papouasie","fidji","fiji"],
 };
 
+// Mots-clés de zone normalisés une fois, pour comparer sans accents
+const ZONES_ND = Object.fromEntries(
+  Object.entries(ZONES).map(([z, keys]) => [z, keys.map(deburr)])
+);
+
 function inZone(country, zone) {
   if (!zone) return true;
-  const low = (country || "").toLowerCase();
-  return (ZONES[zone] || []).some(k => low.includes(k) || k.includes(low));
+  const low = deburr(country);
+  return (ZONES_ND[zone] || []).some(k => low.includes(k) || k.includes(low));
+}
+
+/**
+ * Zone d'une offre, calculée une fois au chargement : la comparaison par
+ * mots-clés est trop coûteuse pour être refaite à chaque frappe dans la
+ * recherche, d'autant qu'on compte désormais les offres de chaque zone.
+ */
+function zoneOf(country) {
+  for (const zone of Object.keys(ZONES)) if (inZone(country, zone)) return zone;
+  return null;
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-window.addEventListener("DOMContentLoaded", loadOffers);
+window.addEventListener("DOMContentLoaded", () => {
+  // Durée et tri ne dépendent pas des données : on les monte tout de suite
+  updateDurationLabel();
+  updateSortLabel();
+  loadOffers();
+});
 
 async function loadOffers() {
   showSkeletons();
@@ -973,13 +950,12 @@ async function loadOffers() {
     const data = await res.json();
     const all = data.offers || [];
 
+    for (const o of all) o._zone = zoneOf(o.country);
+
     vieOffers = all.filter(o => o.source.includes("Business France") || o.source.includes("VIE"));
     wtjOffers = all.filter(o => o.source.includes("Welcome") || o.source.includes("WTJ"));
 
-    document.getElementById("count-vie").textContent = vieOffers.length.toLocaleString("fr-FR");
-    document.getElementById("count-wtj").textContent = wtjOffers.length.toLocaleString("fr-FR");
-
-    updateSidebarStats(all);
+    buildCountryIndex(all);
     populateSectorFilter(currentTab === "vie" ? vieOffers : wtjOffers);
     applyFilters();
     loadMeta();
@@ -990,7 +966,6 @@ async function loadOffers() {
         <div class="empty-title">Aucune donnée disponible</div>
         <div class="empty-sub">Lance un scraping pour récupérer les offres VIE.</div>
       </div>`;
-    document.getElementById("stat-count").textContent = "—";
   }
 }
 
@@ -1008,46 +983,202 @@ async function loadMeta() {
   } catch {}
 }
 
-// ── SIDEBAR STATS ─────────────────────────────────────────────────────────────
-function updateSidebarStats(all) {
-  const vie = vieOffers.length, wtj = wtjOffers.length, total = all.length;
-  document.getElementById("d-total").textContent = total.toLocaleString("fr-FR");
-
-  if (total) {
-    const viePct = Math.round(vie / total * 100);
-    document.getElementById("d-bar-fill").style.width = viePct + "%";
-    document.getElementById("d-vie-pct").textContent = viePct + "%";
-    document.getElementById("d-wtj-pct").textContent = (100 - viePct) + "%";
-  }
-
-  // Top 5 pays
-  const byCountry = {};
-  for (const o of all) { const c = o.country||"—"; byCountry[c]=(byCountry[c]||0)+1; }
-  const topC = Object.entries(byCountry).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const maxC = topC[0]?.[1] || 1;
-  document.getElementById("sidebar-top-countries").innerHTML = topC.map(([c,n]) => `
-    <div class="top-item">
-      <span style="font-size:14px">${getFlag(c)}</span>
-      <span class="top-item-label">${c}</span>
-      <div class="top-item-bar"><div class="top-item-bar-fill" style="width:${Math.round(n/maxC*100)}%"></div></div>
-      <span class="top-item-count">${n}</span>
-    </div>`).join("");
-
-  // Top 5 secteurs
-  const bySector = {};
+// ── FILTRE PAYS (multi-sélection) ─────────────────────────────────────────────
+/**
+ * Construit la liste des pays depuis les offres, triée par nombre d'offres.
+ * Les deux sources n'écrivent pas les pays pareil ("ALLEMAGNE" côté Business
+ * France, "Germany" côté WTJ) : on regroupe sur la version minuscule et on
+ * affiche une casse propre.
+ */
+function buildCountryIndex(all) {
+  const byKey = new Map();
   for (const o of all) {
-    const s = o.sectors ? o.sectors.split(">")[0].trim() : null;
-    if (s) bySector[s]=(bySector[s]||0)+1;
+    const raw = (o.country || "").trim();
+    if (!raw) continue;
+    const key = raw.toLowerCase();
+    if (!byKey.has(key)) byKey.set(key, { key, label: titleCase(raw), count: 0 });
+    byKey.get(key).count++;
   }
-  const topS = Object.entries(bySector).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const maxS = topS[0]?.[1] || 1;
-  document.getElementById("sidebar-top-sectors").innerHTML = topS.map(([s,n]) => `
-    <div class="top-item">
-      <span style="font-size:13px">${getSectorIcon(s)}</span>
-      <span class="top-item-label" style="font-size:11.5px">${s}</span>
-      <div class="top-item-bar"><div class="top-item-bar-fill" style="width:${Math.round(n/maxS*100)}%"></div></div>
-      <span class="top-item-count">${n}</span>
+  countryIndex = [...byKey.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "fr"));
+
+  // Une sélection peut pointer vers un pays disparu après un rafraîchissement
+  for (const k of [...selectedCountries]) if (!byKey.has(k)) selectedCountries.delete(k);
+
+  renderCountryOptions();
+  updateCountryLabel();
+}
+
+function titleCase(s) {
+  return s.toLowerCase().replace(/(^|[\s'’\-])([a-zà-ÿ])/g, (_, sep, c) => sep + c.toUpperCase());
+}
+
+function renderCountryOptions() {
+  const q = document.getElementById("dd-country-search").value.toLowerCase().trim();
+  const list = countryIndex.filter(c => !q || c.label.toLowerCase().includes(q));
+
+  const el = document.getElementById("dd-country-list");
+  if (!list.length) { el.innerHTML = `<div class="dd-empty">Aucun pays</div>`; return; }
+
+  el.innerHTML = list.map(c => `
+    <label class="dd-opt">
+      <input type="checkbox" value="${escHtml(c.key)}" ${selectedCountries.has(c.key) ? "checked" : ""}>
+      <span style="font-size:14px">${getFlag(c.key)}</span>
+      <span class="dd-opt-label">${escHtml(c.label)}</span>
+      <span class="dd-opt-count">${c.count}</span>
+    </label>`).join("");
+
+  el.querySelectorAll("input[type=checkbox]").forEach(box => {
+    box.addEventListener("change", () => {
+      if (box.checked) selectedCountries.add(box.value); else selectedCountries.delete(box.value);
+      updateCountryLabel();
+      applyFilters();
+    });
+  });
+}
+
+function updateCountryLabel() {
+  const n = selectedCountries.size;
+  const only = n === 1 ? countryIndex.find(c => c.key === [...selectedCountries][0]) : null;
+
+  if (n === 0)      setToggle("dd-country", "Pays", false);
+  else if (only)    setToggle("dd-country", `${getFlag(only.key)} ${only.label}`, true);
+  else              setToggle("dd-country", `Pays <span class="dd-badge">${n}</span>`, true, true);
+}
+
+function clearCountries() {
+  selectedCountries.clear();
+  renderCountryOptions();
+  updateCountryLabel();
+  applyFilters();
+}
+
+// ── DROPDOWNS — socle commun ──────────────────────────────────────────────────
+/** Met à jour le libellé d'un dropdown et signale s'il porte une sélection. */
+function setToggle(ddId, label, active, isHtml = false) {
+  const el = document.getElementById(`${ddId}-label`);
+  if (isHtml) el.innerHTML = label; else el.textContent = label;
+  document.getElementById(`${ddId}-toggle`).classList.toggle("has-selection", !!active);
+}
+
+/**
+ * Rendu d'une liste à choix unique. `options` = [{value,label,icon,count}].
+ * Les gestionnaires sont attachés en JS plutôt qu'en onclick inline : les
+ * libellés viennent des données et pourraient contenir des quotes.
+ */
+function renderSingle(listId, options, currentValue, pick) {
+  const el = document.getElementById(listId);
+  if (!options.length) { el.innerHTML = `<div class="dd-empty">Aucun résultat</div>`; return; }
+
+  el.innerHTML = options.map(o => `
+    <div class="dd-opt${o.value === currentValue ? " selected" : ""}" data-value="${escHtml(o.value)}">
+      ${o.icon ? `<span style="font-size:14px">${o.icon}</span>` : ""}
+      <span class="dd-opt-label">${escHtml(o.label)}</span>
+      ${o.count != null ? `<span class="dd-opt-count">${o.count}</span>` : ""}
+      <span class="dd-check">✓</span>
     </div>`).join("");
+
+  el.querySelectorAll(".dd-opt").forEach(node => {
+    node.addEventListener("click", () => { pick(node.dataset.value); closeDropdowns(); });
+  });
+}
+
+function toggleDropdown(e, id) {
+  e.stopPropagation();
+  const dd = document.getElementById(id);
+  const wasOpen = dd.classList.contains("open");
+  closeDropdowns();
+  if (!wasOpen) { dd.classList.add("open"); positionPanel(dd); }
+}
+
+/**
+ * Ramène le panneau dans la fenêtre : un dropdown situé à droite ferait sinon
+ * déborder son panneau, surtout sur écran étroit.
+ */
+function positionPanel(dd) {
+  const panel = dd.querySelector(".dd-panel");
+  const M = 8;
+  panel.style.left = "";
+  panel.style.right = "";
+
+  if (panel.getBoundingClientRect().right > window.innerWidth - M) {
+    panel.style.left = "auto";
+    panel.style.right = "0";
+  }
+  // Panneau plus large que la place disponible : on le colle au bord gauche
+  if (panel.getBoundingClientRect().left < M) {
+    panel.style.right = "auto";
+    panel.style.left = `${M - dd.getBoundingClientRect().left}px`;
+  }
+}
+
+function closeDropdowns() {
+  document.querySelectorAll(".dd.open").forEach(d => d.classList.remove("open"));
+}
+
+// Referme au clic en dehors et à l'échappement
+document.addEventListener("click", e => {
+  if (!e.target.closest(".dd")) closeDropdowns();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDropdowns(); });
+
+// ── DURÉE ─────────────────────────────────────────────────────────────────────
+const DURATIONS = [
+  { value: "",   label: "Toutes les durées" },
+  { value: "6",  label: "6 mois" },
+  { value: "12", label: "12 mois" },
+  { value: "18", label: "18 mois" },
+  { value: "24", label: "24 mois" },
+];
+
+function renderDurationOptions() {
+  renderSingle("dd-duration-list", DURATIONS, filterDuration, v => {
+    filterDuration = v;
+    updateDurationLabel();
+    applyFilters();
+  });
+}
+
+function updateDurationLabel() {
+  const opt = DURATIONS.find(d => d.value === filterDuration);
+  setToggle("dd-duration", filterDuration ? opt.label : "Durée", !!filterDuration);
+  renderDurationOptions();
+}
+
+// ── SECTEUR ───────────────────────────────────────────────────────────────────
+function renderSectorOptions() {
+  const q = document.getElementById("dd-sector-search").value.toLowerCase().trim();
+  const list = [{ value: "", label: "Tous les secteurs" }]
+    .concat(sectorIndex.filter(s => !q || s.label.toLowerCase().includes(q)));
+
+  renderSingle("dd-sector-list", list, filterSector, v => {
+    filterSector = v;
+    updateSectorLabel();
+    applyFilters();
+  });
+}
+
+function updateSectorLabel() {
+  const opt = sectorIndex.find(s => s.value === filterSector);
+  setToggle("dd-sector", opt ? `${opt.icon} ${opt.label}` : "Secteur", !!filterSector);
+  renderSectorOptions();
+}
+
+// ── TRI ───────────────────────────────────────────────────────────────────────
+const SORTS = [
+  { value: "country",         label: "Pays" },
+  { value: "title",           label: "Intitulé du poste" },
+  { value: "company",         label: "Entreprise" },
+  { value: "sectors",         label: "Secteur" },
+  { value: "duration_months", label: "Durée" },
+];
+
+function renderSortOptions() {
+  renderSingle("dd-sort-list", SORTS, currentSort.key, v => setSortKey(v));
+}
+
+function updateSortLabel() {
+  setToggle("dd-sort", SORTS.find(s => s.value === currentSort.key).label, false);
+  renderSortOptions();
 }
 
 // ── ONGLETS ───────────────────────────────────────────────────────────────────
@@ -1055,12 +1186,26 @@ function switchTab(tab) {
   currentTab = tab;
   document.getElementById("tab-vie").classList.toggle("active", tab === "vie");
   document.getElementById("tab-wtj").classList.toggle("active", tab === "wtj");
+  // Les filtres sont conservés d'un onglet à l'autre : les compteurs des onglets
+  // annoncent déjà combien d'offres y répondent.
   populateSectorFilter(tab === "vie" ? vieOffers : wtjOffers);
-  resetFiltersOnly();
   applyFilters();
 }
 
 // ── ZONES ─────────────────────────────────────────────────────────────────────
+/** Affiche le nombre d'offres par zone, filtres courants appliqués. */
+function updateZoneCounts(offers) {
+  const byZone = new Map();
+  for (const o of offers) if (o._zone) byZone.set(o._zone, (byZone.get(o._zone) || 0) + 1);
+
+  document.querySelectorAll(".zone-chip").forEach(chip => {
+    const zone = chip.dataset.zone;
+    const n = zone ? (byZone.get(zone) || 0) : offers.length;
+    chip.querySelector(".zone-count").textContent = n.toLocaleString("fr-FR");
+    chip.classList.toggle("is-empty", n === 0);
+  });
+}
+
 function selectZone(el) {
   document.querySelectorAll(".zone-chip").forEach(c => c.classList.remove("active"));
   el.classList.add("active");
@@ -1069,46 +1214,66 @@ function selectZone(el) {
 }
 
 // ── TRI ───────────────────────────────────────────────────────────────────────
-function setSort(key, el) {
-  currentSort = { key, asc: currentSort.key === key ? !currentSort.asc : true };
-  document.querySelectorAll(".sort-opt").forEach(o => {
-    o.classList.remove("active");
-    const a = o.querySelector(".sort-arrow"); if (a) a.textContent = "";
-  });
-  el.classList.add("active");
-  const arrow = document.getElementById(`arrow-${key}`);
-  if (arrow) arrow.textContent = currentSort.asc ? "↑" : "↓";
+function setSortKey(key) {
+  currentSort.key = key;
+  updateSortLabel();
+  applyFilters();
+}
+
+function toggleSortDir() {
+  currentSort.asc = !currentSort.asc;
+  document.getElementById("btn-sortdir").textContent = currentSort.asc ? "↑" : "↓";
   applyFilters();
 }
 
 // ── SECTEURS DYNAMIQUES ───────────────────────────────────────────────────────
+/** Construit la liste des secteurs de l'onglet courant, avec leur volume. */
 function populateSectorFilter(offers) {
-  const sectors = new Set();
+  const counts = new Map();
   for (const o of offers) {
-    if (o.sectors) { const t = o.sectors.split(">")[0].trim(); if (t) sectors.add(t); }
+    if (!o.sectors) continue;
+    const t = o.sectors.split(">")[0].trim();
+    if (t) counts.set(t, (counts.get(t) || 0) + 1);
   }
-  const sel = document.getElementById("f-sector");
-  const cur = sel.value;
-  sel.innerHTML = `<option value="">Tous les secteurs</option>` +
-    [...sectors].sort().map(s =>
-      `<option value="${escHtml(s)}" ${s===cur?"selected":""}>${getSectorIcon(s)} ${escHtml(s)}</option>`
-    ).join("");
+  sectorIndex = [...counts.entries()]
+    .map(([label, count]) => ({ value: label, label, count, icon: getSectorIcon(label) }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "fr"));
+
+  // Un secteur absent de l'onglet courant ne doit pas rester filtré en silence
+  if (filterSector && !counts.has(filterSector)) filterSector = "";
+  updateSectorLabel();
 }
 
 // ── FILTRES ───────────────────────────────────────────────────────────────────
 function applyFilters() {
   const keyword  = document.getElementById("f-keyword").value.toLowerCase().trim();
-  const country  = document.getElementById("f-country").value.toLowerCase().trim();
-  const duration = document.getElementById("f-duration").value;
-  const sector   = document.getElementById("f-sector").value.toLowerCase();
+  const duration = filterDuration;
+  const sector   = filterSector.toLowerCase();
 
-  let filtered = currentTab === "vie" ? [...vieOffers] : [...wtjOffers];
+  // Tous les critères sauf la zone : sert aussi à compter les offres de
+  // chaque zone « toutes choses égales par ailleurs ».
+  const matchesExceptZone = o => {
+    if (keyword && !o.title.toLowerCase().includes(keyword)) return false;
+    if (selectedCountries.size && !selectedCountries.has((o.country || "").trim().toLowerCase())) return false;
+    if (duration && !(o.duration_months && String(o.duration_months).includes(duration))) return false;
+    if (sector && !(o.sectors || "").toLowerCase().includes(sector)) return false;
+    return true;
+  };
+  const matches = o => matchesExceptZone(o) && (!currentZone || o._zone === currentZone);
 
-  if (keyword)      filtered = filtered.filter(o => o.title.toLowerCase().includes(keyword));
-  if (country)      filtered = filtered.filter(o => (o.country||"").toLowerCase().includes(country));
-  if (duration)     filtered = filtered.filter(o => o.duration_months && String(o.duration_months).includes(duration));
-  if (sector)       filtered = filtered.filter(o => (o.sectors||"").toLowerCase().includes(sector));
-  if (currentZone)  filtered = filtered.filter(o => inZone(o.country, currentZone));
+  updateZoneCounts((currentTab === "vie" ? vieOffers : wtjOffers).filter(matchesExceptZone));
+
+  // Les compteurs d'onglets reflètent les filtres en cours : ils remplacent
+  // l'ancien bandeau « N offres affichées ».
+  const vieMatch = vieOffers.filter(matches);
+  const wtjMatch = wtjOffers.filter(matches);
+  document.getElementById("count-vie").textContent = vieMatch.length.toLocaleString("fr-FR");
+  document.getElementById("count-wtj").textContent = wtjMatch.length.toLocaleString("fr-FR");
+
+  const hasFilter = !!(keyword || duration || sector || currentZone || selectedCountries.size);
+  document.getElementById("btn-reset").hidden = !hasFilter;
+
+  const filtered = currentTab === "vie" ? [...vieMatch] : [...wtjMatch];
 
   // Tri
   const { key, asc } = currentSort;
@@ -1122,9 +1287,6 @@ function applyFilters() {
     return asc ? va.localeCompare(vb,"fr") : vb.localeCompare(va,"fr");
   });
 
-  document.getElementById("stat-count").textContent = filtered.length.toLocaleString("fr-FR");
-  updateActiveTags(keyword, country, duration, sector);
-
   // Rendu : groupé par pays si tri = pays, sinon liste plate
   if (currentSort.key === "country") {
     renderGroupedByCountry(filtered);
@@ -1133,38 +1295,24 @@ function applyFilters() {
   }
 }
 
-function resetFiltersOnly() {
-  document.getElementById("f-keyword").value = "";
-  document.getElementById("f-country").value = "";
-  document.getElementById("f-duration").selectedIndex = 0;
-  document.getElementById("f-sector").selectedIndex = 0;
-}
-
 function resetAll() {
-  resetFiltersOnly();
+  document.getElementById("f-keyword").value = "";
+  filterDuration = "";
+  filterSector = "";
+  updateDurationLabel();
+  updateSectorLabel();
+
+  document.getElementById("dd-country-search").value = "";
+  document.getElementById("dd-sector-search").value = "";
+  selectedCountries.clear();
+  renderCountryOptions();
+  updateCountryLabel();
+
   currentZone = "";
   document.querySelectorAll(".zone-chip").forEach(c => c.classList.remove("active"));
   document.querySelector(".zone-chip[data-zone='']").classList.add("active");
   applyFilters();
 }
-
-// ── TAGS FILTRES ACTIFS ────────────────────────────────────────────────────────
-function updateActiveTags(keyword, country, duration, sector) {
-  const tags = [];
-  if (keyword)  tags.push({ label: `"${keyword}"`, clear: () => { document.getElementById("f-keyword").value=""; applyFilters(); } });
-  if (country)  tags.push({ label: `🌍 ${country}`, clear: () => { document.getElementById("f-country").value=""; applyFilters(); } });
-  if (duration) tags.push({ label: `⏱ ${duration} mois`, clear: () => { document.getElementById("f-duration").selectedIndex=0; applyFilters(); } });
-  if (sector)   tags.push({ label: sector, clear: () => { document.getElementById("f-sector").selectedIndex=0; applyFilters(); } });
-  if (currentZone) tags.push({ label: currentZone, clear: () => { selectZone(document.querySelector(".zone-chip[data-zone='']")); } });
-
-  const container = document.getElementById("active-filters");
-  container.innerHTML = tags.map((t, i) =>
-    `<span class="filter-tag">${escHtml(t.label)}<button onclick="clearTag(${i})">×</button></span>`
-  ).join("");
-  window._tagClears = tags.map(t => t.clear);
-}
-
-function clearTag(i) { window._tagClears[i]?.(); }
 
 // ── RENDU GROUPÉ PAR PAYS ──────────────────────────────────────────────────────
 function renderGroupedByCountry(offers) {
@@ -1317,17 +1465,9 @@ function setStatusDot(state) {
   dot.className = `status-dot ${state}`;
 }
 
-function toggleSidebar() {
-  const sidebar = document.querySelector(".sidebar");
-  const overlay = document.getElementById("sidebar-overlay");
-  const isOpen = sidebar.classList.contains("open");
-  sidebar.classList.toggle("open", !isOpen);
-  overlay.classList.toggle("visible", !isOpen);
-}
-
-function closeSidebar() {
-  document.querySelector(".sidebar").classList.remove("open");
-  document.getElementById("sidebar-overlay").classList.remove("visible");
+// Déplie la barre de filtres sur mobile (elle est toujours visible au-delà)
+function toggleFilterbar() {
+  document.getElementById("filterbar").classList.toggle("open");
 }
 
 function escHtml(str) {
