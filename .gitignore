@@ -1,5 +1,10 @@
 # Secrets — ne jamais publier
 .env
+client_secret.json
+token.json
+
+# Config locale de l'éditeur
+.claude/
 
 # Données scrapées — optionnel de les versionner
 vie_offers.json
