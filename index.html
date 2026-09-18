@@ -743,7 +743,20 @@
   <!-- ── CONTENU ──────────────────────────────────────────────────────────── -->
   <div class="main-content">
 
-    <div class="offers-list" id="offers-list">
+    <div class="globe-loading" id="globe-loading" aria-live="polite" aria-label="Chargement des annonces">
+  <div class="globe-loading-inner">
+    <div class="globe-canvas-wrap">
+      <canvas id="globe-canvas" aria-hidden="true"></canvas>
+    </div>
+    <div class="globe-loading-copy">
+      <span class="globe-loading-kicker">VIE RADAR</span>
+      <strong id="globe-loading-title">Chargement des opportunités</strong>
+      <span id="globe-loading-status">Recherche des annonces à travers le monde…</span>
+    </div>
+  </div>
+</div>
+
+<div class="offers-list" id="offers-list">
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
         <div class="empty-title">Aucune donnée</div>
@@ -754,6 +767,179 @@
   </div>
 </div>
 
+<style>
+.globe-loading {
+  display: none;
+  min-height: min(62vh, 620px);
+  align-items: center;
+  justify-content: center;
+  padding: 42px 24px 56px;
+  opacity: 1;
+  transition: opacity .22s ease, transform .22s ease;
+}
+.globe-loading.is-visible { display: flex; }
+.globe-loading.is-leaving {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+.globe-loading-inner {
+  width: min(100%, 760px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.globe-canvas-wrap {
+  width: min(72vw, 480px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+#globe-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+}
+.globe-loading-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin-top: -8px;
+}
+.globe-loading-kicker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .16em;
+  color: var(--text-muted);
+}
+.globe-loading-copy strong {
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 650;
+  color: var(--text);
+}
+.globe-loading-copy span:last-child {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+body.globe-is-loading .offers-list { display: none; }
+@media (max-width: 640px) {
+  .globe-loading {
+    min-height: 54vh;
+    padding: 28px 16px 42px;
+  }
+  .globe-canvas-wrap { width: min(82vw, 360px); }
+  .globe-loading-copy strong { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .globe-loading { transition: none; }
+}
+</style>
+
+<script>
+(() => {
+  let cobeGlobe = null;
+  let loadingId = 0;
+  let ready = Promise.resolve();
+  let visibleSince = 0;
+  let phi = 0;
+  const el = document.getElementById("globe-loading");
+  const canvas = document.getElementById("globe-canvas");
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  // Pin the onRender API documented for COBE 0.6.x; v2 changes this API.
+  // Cache the module, not a WebGL instance: each loading cycle owns its globe.
+  const cobeModule = import("https://cdn.jsdelivr.net/npm/cobe@0.6.5/+esm")
+    .catch(() => null);
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  window.startGlobeLoading = function () {
+    const id = ++loadingId;
+    if (cobeGlobe) cobeGlobe.destroy();
+    cobeGlobe = null;
+    document.body.classList.add("globe-is-loading");
+    document.getElementById("offers-list").setAttribute("aria-busy", "true");
+    el.classList.remove("is-leaving");
+    el.classList.add("is-visible");
+    document.getElementById("globe-loading-title").textContent = "Chargement des opportunités";
+    document.getElementById("globe-loading-status").textContent = "Recherche des annonces à travers le monde…";
+    visibleSince = performance.now();
+
+    ready = (async () => {
+      // A CDN failure must never prevent the offers from appearing.
+      const module = await Promise.race([cobeModule, wait(4000).then(() => null)]);
+      if (id !== loadingId || !module) return;
+      try {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const size = Math.round(canvas.parentElement.getBoundingClientRect().width * dpr);
+        let lastFrame = performance.now();
+        phi = 0;
+        cobeGlobe = module.default(canvas, {
+          devicePixelRatio: dpr,
+          // COBE expects physical pixels here, CSS controls the displayed size.
+          width: size,
+          height: size,
+          phi,
+          theta: 0.2,
+          dark: 0,
+          diffuse: 1.2,
+          scale: 1,
+          mapSamples: 16000,
+          mapBrightness: 6,
+          baseColor: [0.3, 0.3, 0.3],
+          markerColor: [0.15, 0.35, 0.55],
+          glowColor: [1, 1, 1],
+          markers: [
+            { location: [48.8566, 2.3522], size: 0.035 },
+            { location: [51.5074, -0.1278], size: 0.025 },
+            { location: [40.7128, -74.0060], size: 0.025 },
+            { location: [25.2048, 55.2708], size: 0.025 },
+            { location: [35.6762, 139.6503], size: 0.025 }
+          ],
+          onRender: state => {
+            const now = performance.now();
+            if (!reducedMotion.matches) phi += Math.min(now - lastFrame, 100) * 0.00018;
+            lastFrame = now;
+            state.phi = phi;
+            const pixels = Math.round(canvas.parentElement.getBoundingClientRect().width * dpr);
+            state.width = pixels;
+            state.height = pixels;
+          }
+        });
+        visibleSince = performance.now();
+      } catch {
+        // Keep the loading text as a fallback when WebGL is unavailable.
+      }
+    })();
+    return id;
+  };
+
+  window.finishGlobeLoading = async function (id) {
+    await ready;
+    // Keep fast cached responses from flashing past before the globe is painted.
+    await wait(Math.max(0, 700 - (performance.now() - visibleSince)));
+    if (id !== loadingId) return;
+    el.classList.add("is-leaving");
+    await wait(reducedMotion.matches ? 0 : 220);
+    if (id !== loadingId) return;
+    if (cobeGlobe) cobeGlobe.destroy();
+    cobeGlobe = null;
+    el.classList.remove("is-visible", "is-leaving");
+    document.body.classList.remove("globe-is-loading");
+    document.getElementById("offers-list").setAttribute("aria-busy", "false");
+  };
+
+  window.addEventListener("pagehide", () => {
+    ++loadingId;
+    if (cobeGlobe) cobeGlobe.destroy();
+    cobeGlobe = null;
+  });
+})();
+</script>
+
 <script>
 const API_BASE = "";
 
@@ -761,7 +947,6 @@ let vieOffers = [], wtjOffers = [];
 let currentTab  = "vie";
 let currentZone = "";
 let currentSort = { key: "country", asc: true };
-let pollInterval = null;
 
 // Filtre pays : index [{key, label, count}] construit depuis les données,
 // et l'ensemble des clés cochées (clés = pays en minuscules).
@@ -939,10 +1124,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // Durée et tri ne dépendent pas des données : on les monte tout de suite
   updateDurationLabel();
   updateSortLabel();
-  loadOffers();
+  startScraping();
 });
 
-async function loadOffers() {
+async function loadOffers(loadingId = startGlobeLoading()) {
   showSkeletons();
   try {
     const res = await fetch(`${API_BASE}/api/offers?limit=2000`);
@@ -958,7 +1143,7 @@ async function loadOffers() {
     buildCountryIndex(all);
     populateSectorFilter(currentTab === "vie" ? vieOffers : wtjOffers);
     applyFilters();
-    loadMeta();
+    await loadMeta();
   } catch {
     document.getElementById("offers-list").innerHTML = `
       <div class="empty-state">
@@ -966,6 +1151,8 @@ async function loadOffers() {
         <div class="empty-title">Aucune donnée disponible</div>
         <div class="empty-sub">Lance un scraping pour récupérer les offres VIE.</div>
       </div>`;
+  } finally {
+    await finishGlobeLoading(loadingId);
   }
 }
 
@@ -1379,46 +1566,50 @@ function offerCardHTML(o, isLast = false, isFirst = false) {
 // ── SCRAPING ─────────────────────────────────────────────────────────────────
 async function startScraping() {
   const btn = document.getElementById("btn-scrape");
+  if (btn.disabled) return;
   btn.disabled = true;
+  const loadingId = startGlobeLoading();
   document.getElementById("btn-label").textContent = "En cours…";
-  setStatus("info", "Scraping lancé — durée estimée : 1 à 2 minutes…");
+  document.getElementById("globe-loading-status").textContent =
+    "Recherche des dernières annonces — cela peut prendre 1 à 2 minutes…";
+  setStatus("info", "Recherche des dernières annonces — durée estimée : 1 à 2 minutes…");
   setStatusDot("running");
+  let refreshFailed = false;
 
   try {
     const res = await fetch(`${API_BASE}/api/scrape`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ source: "all" })
     });
-    if (res.status === 409) setStatus("info", "Un scraping est déjà en cours…");
-    else if (!res.ok) throw new Error();
-    pollInterval = setInterval(pollStatus, 5000);
-  } catch {
-    setStatus("error", "Impossible de joindre l'API. Vérifiez que api.py est lancé.");
-    resetBtn();
+    if (res.status === 409) setStatus("info", "Une recherche est déjà en cours, récupération des résultats à la fin…");
+    else if (!res.ok) throw new Error("Impossible de démarrer la recherche.");
+    const data = await pollStatus();
+    if (data.success !== true) throw new Error(data.error || "La recherche a échoué.");
+    setStatus("success", `Recherche terminée — ${data.total_offers} offres récupérées`);
+  } catch (error) {
+    refreshFailed = true;
+    setStatus("error", `${error.message} Affichage des dernières annonces disponibles en cache.`);
+  } finally {
+    // Keep the same globe alive until the refreshed offers (or cache) are rendered.
+    try {
+      await loadOffers(loadingId);
+      if (refreshFailed) setStatusDot("error");
+    } finally {
+      resetBtn();
+    }
   }
 }
 
 async function pollStatus() {
-  try {
-    const res = await fetch(`${API_BASE}/api/status`);
+  const deadline = Date.now() + 5 * 60 * 1000;
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    const res = await fetch(`${API_BASE}/api/status`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Impossible de vérifier l’avancement de la recherche.");
     const data = await res.json();
-    if (!data.running) {
-      clearInterval(pollInterval); pollInterval = null;
-      if (data.success === true) {
-        setStatus("success", `Scraping terminé — ${data.total_offers} offres récupérées`);
-        setStatusDot("ok");
-        await loadOffers();
-      } else if (data.success === false) {
-        setStatus("error", `Erreur : ${data.error}`);
-        setStatusDot("error");
-      }
-      resetBtn();
-    }
-  } catch {
-    clearInterval(pollInterval);
-    setStatus("error", "Impossible de vérifier le statut.");
-    resetBtn();
+    if (!data.running) return data;
   }
+  throw new Error("La recherche prend plus de temps que prévu.");
 }
 
 function resetBtn() {
