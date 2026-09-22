@@ -3,5 +3,3 @@ flask-cors
 requests
 python-dotenv
 gunicorn
-gspread
-google-auth

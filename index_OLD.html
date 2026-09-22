@@ -155,42 +155,30 @@
     .status-dot.error { background: #ef4444; }
 
     .btn-scrape {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 36px; height: 36px; padding: 8px;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 14px;
       background: var(--accent); color: #fff;
       border: none; border-radius: var(--radius-sm);
       font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
       cursor: pointer; transition: background 0.15s; white-space: nowrap;
     }
     .btn-scrape:hover { background: var(--accent-hover); }
-    .btn-scrape:disabled { opacity: 0.55; cursor: wait; }
-    .btn-scrape svg { width: 18px; height: 18px; }
-    .btn-scrape[aria-busy="true"] svg { animation: refresh-spin 1.2s linear infinite; }
-    .btn-scrape:focus-visible, .toast-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
-    @keyframes refresh-spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) { .btn-scrape[aria-busy="true"] svg { animation: none; } }
+    .btn-scrape:disabled { opacity: 0.4; cursor: not-allowed; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     /* ══════════════════════════════════════════════════
        STATUS BAR
     ══════════════════════════════════════════════════ */
-    .toast {
-      position: fixed; top: 84px; right: 20px; z-index: 200;
-      width: min(370px, calc(100vw - 32px)); box-sizing: border-box;
-      display: grid; grid-template-columns: 20px 1fr 28px; align-items: start; gap: 10px;
-      padding: 15px; background: var(--surface); color: var(--text-secondary);
-      border: 1px solid var(--border); border-radius: var(--radius);
-      box-shadow: var(--shadow); font-size: 12.5px; line-height: 1.5;
+    .status-bar {
+      display: none; align-items: center; gap: 10px;
+      padding: 9px 24px; font-size: 12.5px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
-    .toast[hidden] { display: none; }
-    .toast-icon { color: var(--text-secondary); font-size: 16px; text-align: center; }
-    .toast.error .toast-icon { color: #b91c1c; }
-    .toast.success .toast-icon { color: var(--green); }
-    .toast-title { display: block; color: var(--text); font-size: 13px; margin-bottom: 3px; }
-    .toast-close { border: 0; background: transparent; color: var(--text-secondary);
-      cursor: pointer; width: 28px; height: 28px; font-size: 20px; border-radius: 5px; }
-    .toast-close:hover { background: var(--bg); }
-    @media (max-width: 640px) { .toast { top: 68px; right: 16px; } }
+    .status-bar.visible { display: flex; }
+    .status-bar.info    { background: #fffbeb; color: #78350f; }
+    .status-bar.success { background: #f0fdf4; color: #14532d; }
+    .status-bar.error   { background: #fef2f2; color: #7f1d1d; }
 
     /* ══════════════════════════════════════════════════
        LAYOUT PRINCIPAL
@@ -464,20 +452,6 @@
       z-index: 5;
     }
     .country-flag { font-size: 20px; line-height: 1; }
-    .flag-icon {
-      display: inline-block;
-      width: 24px;
-      height: 18px;
-      box-sizing: border-box;
-      object-fit: cover;
-      object-position: center;
-      vertical-align: middle;
-      flex-shrink: 0;
-      border-radius: 4px;
-      border: 1px solid rgba(17, 17, 17, 0.10);
-      background: var(--surface);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-    }
     .country-name {
       font-size: 13px; font-weight: 600; color: var(--text);
       flex: 1;
@@ -652,7 +626,7 @@
       .tab-text { display: none; }
       .tab-btn { padding: 6px 10px; }
       .btn-text { display: none; }
-      .btn-scrape { padding: 8px; flex-shrink: 0; }
+      .btn-scrape { padding: 7px 10px; }
       .btn-filter { padding: 7px 10px; }
     }
   </style>
@@ -677,25 +651,16 @@
   </div>
 
   <div class="topbar-right">
-    <span class="last-update" id="last-update" title="Date et heure de la dernière mise à jour des annonces"></span>
+    <span class="last-update" id="last-update"></span>
     <span class="status-dot" id="status-dot"></span>
     <button class="btn-filter" onclick="toggleFilterbar()">⚙ Filtres</button>
-    <button type="button" class="btn-scrape" id="btn-scrape" onclick="startScraping()"
-      aria-label="Actualiser les annonces" aria-busy="false"
-      title="Forcer une nouvelle recherche, même si les annonces sont déjà à jour">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg>
+    <button class="btn-scrape" id="btn-scrape" onclick="startScraping()">
+      <span id="btn-label">↻ <span class="btn-text">Rafraîchir les annonces</span></span>
     </button>
   </div>
 </div>
 
-<aside class="toast" id="status-bar" hidden aria-label="Notification">
-  <span class="toast-icon" id="toast-icon" aria-hidden="true"></span>
-  <div id="toast-content" role="status" aria-live="polite" aria-atomic="true">
-    <strong class="toast-title" id="toast-title"></strong>
-    <span id="toast-message"></span>
-  </div>
-  <button type="button" class="toast-close" aria-label="Fermer la notification" onclick="dismissStatus()">×</button>
-</aside>
+<div class="status-bar" id="status-bar"></div>
 
 <!-- ══ BARRE DE FILTRES ════════════════════════════════════════════════════ -->
 <div class="filterbar" id="filterbar">
@@ -778,20 +743,7 @@
   <!-- ── CONTENU ──────────────────────────────────────────────────────────── -->
   <div class="main-content">
 
-    <div class="globe-loading" id="globe-loading" aria-live="polite" aria-label="Chargement des annonces">
-  <div class="globe-loading-inner">
-    <div class="globe-canvas-wrap">
-      <canvas id="globe-canvas" aria-hidden="true"></canvas>
-    </div>
-    <div class="globe-loading-copy">
-      <span class="globe-loading-kicker">VIE RADAR</span>
-      <strong id="globe-loading-title">Chargement des opportunités</strong>
-      <span id="globe-loading-status">Recherche des annonces à travers le monde…</span>
-    </div>
-  </div>
-</div>
-
-<div class="offers-list" id="offers-list">
+    <div class="offers-list" id="offers-list">
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
         <div class="empty-title">Aucune donnée</div>
@@ -802,193 +754,6 @@
   </div>
 </div>
 
-<style>
-.globe-loading {
-  display: none;
-  min-height: min(62vh, 620px);
-  align-items: center;
-  justify-content: center;
-  padding: 42px 24px 56px;
-  opacity: 1;
-  transition: opacity .22s ease, transform .22s ease;
-}
-.globe-loading.is-visible { display: flex; }
-.globe-loading.is-leaving {
-  opacity: 0;
-  transform: translateY(-8px);
-  pointer-events: none;
-}
-.globe-loading-inner {
-  width: min(100%, 760px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-.globe-canvas-wrap {
-  width: min(64vw, 340px);
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-}
-#globe-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-width: 340px;
-  aspect-ratio: 1;
-  /* Keep the sphere silhouette crisp without COBE’s outer glow. */
-  mask-image: radial-gradient(circle closest-side, #000 79%, transparent 82%);
-}
-.globe-loading-copy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-  margin-top: 8px;
-}
-.globe-loading-kicker {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  letter-spacing: .16em;
-  color: var(--text-muted);
-}
-.globe-loading-copy strong {
-  font-size: 15px;
-  line-height: 1.4;
-  font-weight: 600;
-  color: var(--text);
-}
-.globe-loading-copy span:last-child {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-body.globe-is-loading .offers-list { display: none; }
-@media (max-width: 640px) {
-  .globe-loading {
-    min-height: 54vh;
-    padding: 28px 16px 42px;
-  }
-  .globe-canvas-wrap { width: min(72vw, 280px); }
-  .globe-loading-copy strong { font-size: 15px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .globe-loading { transition: none; }
-}
-</style>
-
-<script>
-(() => {
-  let cobeGlobe = null;
-  let loadingId = 0;
-  let ready = Promise.resolve();
-  let visibleSince = 0;
-  let phi = 0;
-  const el = document.getElementById("globe-loading");
-  const canvas = document.getElementById("globe-canvas");
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  // Pin the onRender API documented for COBE 0.6.x; v2 changes this API.
-  // Cache the module, not a WebGL instance: each loading cycle owns its globe.
-  const cobeModule = import("https://cdn.jsdelivr.net/npm/cobe@0.6.5/+esm")
-    .catch(() => null);
-  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-  window.startGlobeLoading = function () {
-    const id = ++loadingId;
-    if (cobeGlobe) cobeGlobe.destroy();
-    cobeGlobe = null;
-    document.body.classList.add("globe-is-loading");
-    document.getElementById("offers-list").setAttribute("aria-busy", "true");
-    el.classList.remove("is-leaving");
-    el.classList.add("is-visible");
-    document.getElementById("globe-loading-title").textContent = "Chargement des opportunités";
-    document.getElementById("globe-loading-status").textContent = "Recherche des annonces à travers le monde…";
-    visibleSince = performance.now();
-
-    ready = (async () => {
-      // A CDN failure must never prevent the offers from appearing.
-      const module = await Promise.race([cobeModule, wait(4000).then(() => null)]);
-      if (id !== loadingId || !module) return;
-      try {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const size = Math.round(canvas.parentElement.getBoundingClientRect().width * dpr);
-        let lastFrame = performance.now();
-        let animationTime = 0;
-        const destinations = [
-          { location: [48.8566, 2.3522], size: 0.035 },
-          { location: [51.5074, -0.1278], size: 0.025 },
-          { location: [40.7128, -74.0060], size: 0.025 },
-          { location: [25.2048, 55.2708], size: 0.025 },
-          { location: [35.6762, 139.6503], size: 0.025 }
-        ];
-        phi = 0;
-        cobeGlobe = module.default(canvas, {
-          devicePixelRatio: dpr,
-          // COBE expects physical pixels here, CSS controls the displayed size.
-          width: size,
-          height: size,
-          phi,
-          theta: 0.2,
-          dark: 1,
-          diffuse: 1.2,
-          scale: 1,
-          mapSamples: 16000,
-          mapBrightness: 6,
-          baseColor: [0.28, 0.34, 0.44],
-          markerColor: [0.55, 0.65, 0.82],
-          glowColor: [0, 0, 0],
-          markers: destinations,
-          onRender: state => {
-            const now = performance.now();
-            const elapsed = Math.min(now - lastFrame, 100) / 1000;
-            lastFrame = now;
-            if (!reducedMotion.matches) {
-              animationTime += elapsed;
-              // Time-based motion stays consistent on 60 Hz and 120 Hz screens.
-              phi += elapsed * 0.36;
-            }
-            state.phi = phi;
-            state.theta = reducedMotion.matches ? 0.2 : 0.2 + Math.sin(animationTime * 0.5) * 0.07;
-            state.markers = reducedMotion.matches ? destinations : destinations.map((marker, index) => ({
-              location: marker.location,
-              size: marker.size * (1 + 0.18 * Math.sin(animationTime * 2.2 + index * 1.25))
-            }));
-            const pixels = Math.round(canvas.parentElement.getBoundingClientRect().width * dpr);
-            state.width = pixels;
-            state.height = pixels;
-          }
-        });
-        visibleSince = performance.now();
-      } catch {
-        // Keep the loading text as a fallback when WebGL is unavailable.
-      }
-    })();
-    return id;
-  };
-
-  window.finishGlobeLoading = async function (id) {
-    await ready;
-    // Keep fast cached responses from flashing past before the globe is painted.
-    await wait(Math.max(0, 700 - (performance.now() - visibleSince)));
-    if (id !== loadingId) return;
-    el.classList.add("is-leaving");
-    await wait(reducedMotion.matches ? 0 : 220);
-    if (id !== loadingId) return;
-    if (cobeGlobe) cobeGlobe.destroy();
-    cobeGlobe = null;
-    el.classList.remove("is-visible", "is-leaving");
-    document.body.classList.remove("globe-is-loading");
-    document.getElementById("offers-list").setAttribute("aria-busy", "false");
-  };
-
-  window.addEventListener("pagehide", () => {
-    ++loadingId;
-    if (cobeGlobe) cobeGlobe.destroy();
-    cobeGlobe = null;
-  });
-})();
-</script>
-
 <script>
 const API_BASE = "";
 
@@ -996,6 +761,7 @@ let vieOffers = [], wtjOffers = [];
 let currentTab  = "vie";
 let currentZone = "";
 let currentSort = { key: "country", asc: true };
+let pollInterval = null;
 
 // Filtre pays : index [{key, label, count}] construit depuis les données,
 // et l'ensemble des clés cochées (clés = pays en minuscules).
@@ -1007,41 +773,6 @@ let sectorIndex = [];
 let filterDuration = "";
 let filterSector = "";
 
-function readLocal(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
-}
-function writeLocal(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Private mode or full storage. */ }
-}
-function safeOfferURL(value) {
-  try {
-    const url = new URL(value);
-    return ["https:", "http:"].includes(url.protocol) ? url.href : "";
-  } catch { return ""; }
-}
-function savePreferences() {
-  writeLocal("vie-radar-filters", { currentTab, currentZone, currentSort,
-    countries: [...selectedCountries], duration: filterDuration, sector: filterSector,
-    keyword: document.getElementById("f-keyword").value });
-}
-function restorePreferences() {
-  const saved = readLocal("vie-radar-filters", {});
-  if (!saved || typeof saved !== "object") return;
-  currentTab = saved.currentTab === "wtj" ? "wtj" : "vie";
-  currentZone = Object.hasOwn(ZONES, saved.currentZone) ? saved.currentZone : "";
-  if (SORTS.some(s => s.value === saved.currentSort?.key))
-    currentSort = { key: saved.currentSort.key, asc: saved.currentSort.asc !== false };
-  selectedCountries = new Set(Array.isArray(saved.countries) ? saved.countries.filter(c => typeof c === "string") : []);
-  filterDuration = DURATIONS.some(d => d.value === saved.duration) ? saved.duration : "";
-  filterSector = typeof saved.sector === "string" ? saved.sector : "";
-  document.getElementById("f-keyword").value = typeof saved.keyword === "string" ? saved.keyword : "";
-  document.getElementById("tab-vie").classList.toggle("active", currentTab === "vie");
-  document.getElementById("tab-wtj").classList.toggle("active", currentTab === "wtj");
-  document.querySelectorAll(".zone-chip").forEach(c => c.classList.toggle("active", c.dataset.zone === currentZone));
-  document.getElementById("btn-sortdir").textContent = currentSort.asc ? "↑" : "↓";
-  updateDurationLabel();
-  updateSortLabel();
-}
 // ── ICÔNES SECTEURS ─────────────────────────────────────────────────────────
 const SECTOR_ICONS = {
   "informatique & tech":       "💻",
@@ -1069,65 +800,65 @@ function getSectorIcon(s) {
 
 // ── DRAPEAUX ────────────────────────────────────────────────────────────────
 const FLAGS = {
-  "france":"fr","allemagne":"de","germany":"de","espagne":"es","spain":"es",
-  "italie":"it","italy":"it","royaume-uni":"gb","united kingdom":"gb","uk":"gb",
-  "suisse":"ch","switzerland":"ch","belgique":"be","belgium":"be",
-  "pays-bas":"nl","netherlands":"nl","hollande":"nl",
-  "suède":"se","sweden":"se","norvège":"no","norway":"no",
-  "danemark":"dk","denmark":"dk","finlande":"fi","finland":"fi",
-  "pologne":"pl","poland":"pl","portugal":"pt","autriche":"at","austria":"at",
-  "grèce":"gr","greece":"gr","irlande":"ie","ireland":"ie",
-  "tchéquie":"cz","czech republic":"cz","hongrie":"hu","hungary":"hu",
-  "roumanie":"ro","romania":"ro","luxembourg":"lu","croatie":"hr","croatia":"hr",
-  "bulgarie":"bg","bulgaria":"bg","slovaquie":"sk","slovakia":"sk",
-  "slovénie":"si","slovenia":"si","lituanie":"lt","lithuania":"lt",
-  "lettonie":"lv","latvia":"lv","estonie":"ee","estonia":"ee",
-  "islande":"is","iceland":"is","serbie":"rs","serbia":"rs",
-  "ukraine":"ua","malte":"mt","malta":"mt","chypre":"cy","cyprus":"cy",
-  "monténégro":"me","albanie":"al","bosnie":"ba","macédoine":"mk",
-  "moldavie":"md","moldova":"md","biélorussie":"by","belarus":"by",
-  "andorre":"ad","monaco":"mc","liechtenstein":"li",
-  "chine":"cn","china":"cn","japon":"jp","japan":"jp",
-  "corée du sud":"kr","south korea":"kr","korea":"kr","corée":"kr",
-  "inde":"in","india":"in","vietnam":"vn","viet nam":"vn",
-  "thaïlande":"th","thailand":"th","singapour":"sg","singapore":"sg",
-  "malaisie":"my","malaysia":"my","indonésie":"id","indonesia":"id",
-  "philippines":"ph","taiwan":"tw","hong kong":"hk","myanmar":"mm",
-  "cambodge":"kh","cambodia":"kh","laos":"la","bangladesh":"bd",
-  "pakistan":"pk","sri lanka":"lk","népal":"np","nepal":"np",
-  "mongolie":"mn","kazakhstan":"kz","ouzbékistan":"uz","uzbekistan":"uz",
-  "états-unis":"us","etats-unis":"us","usa":"us","united states":"us",
-  "canada":"ca","mexique":"mx","mexico":"mx",
-  "brésil":"br","bresil":"br","brazil":"br",
-  "argentine":"ar","argentina":"ar","colombie":"co","colombia":"co",
-  "chili":"cl","chile":"cl","pérou":"pe","perou":"pe","peru":"pe",
-  "venezuela":"ve","équateur":"ec","ecuador":"ec","bolivie":"bo","bolivia":"bo",
-  "paraguay":"py","uruguay":"uy","cuba":"cu","panama":"pa","costa rica":"cr",
-  "maroc":"ma","morocco":"ma","algérie":"dz","algerie":"dz","algeria":"dz",
-  "tunisie":"tn","tunisia":"tn","sénégal":"sn","senegal":"sn",
-  "côte d'ivoire":"ci","cote d'ivoire":"ci","ivory coast":"ci",
-  "cameroun":"cm","cameroon":"cm","kenya":"ke",
-  "afrique du sud":"za","south africa":"za","nigeria":"ng","ghana":"gh",
-  "éthiopie":"et","ethiopie":"et","ethiopia":"et","tanzanie":"tz","tanzania":"tz",
-  "ouganda":"ug","uganda":"ug","rwanda":"rw","mali":"ml","burkina faso":"bf",
-  "guinée":"gn","guinea":"gn","madagascar":"mg","mozambique":"mz","angola":"ao",
-  "egypte":"eg","égypte":"eg","egypt":"eg","libye":"ly","libya":"ly",
-  "mauritanie":"mr","niger":"ne","tchad":"td","chad":"td",
-  "bénin":"bj","togo":"tg","gabon":"ga","congo":"cg",
-  "république démocratique du congo":"cd","rd congo":"cd",
-  "maurice":"mu","mauritius":"mu","île maurice":"mu",
-  "namibie":"na","namibia":"na","botswana":"bw","zimbabwe":"zw",
-  "zambie":"zm","zambia":"zm","seychelles":"sc","djibouti":"dj",
-  "burundi":"bi","soudan":"sd","sudan":"sd",
-  "arabie saoudite":"sa","saudi arabia":"sa",
-  "émirats arabes unis":"ae","emirats arabes unis":"ae","uae":"ae","united arab emirates":"ae",
-  "qatar":"qa","koweït":"kw","koweit":"kw","kuwait":"kw",
-  "bahreïn":"bh","bahrein":"bh","bahrain":"bh","oman":"om",
-  "jordanie":"jo","jordan":"jo","liban":"lb","lebanon":"lb",
-  "israël":"il","israel":"il","turquie":"tr","turkey":"tr",
-  "iran":"ir","irak":"iq","iraq":"iq","yémen":"ye","yemen":"ye",
-  "australie":"au","australia":"au","nouvelle-zélande":"nz","new zealand":"nz",
-  "papouasie":"pg","fidji":"fj","fiji":"fj",
+  "france":"🇫🇷","allemagne":"🇩🇪","germany":"🇩🇪","espagne":"🇪🇸","spain":"🇪🇸",
+  "italie":"🇮🇹","italy":"🇮🇹","royaume-uni":"🇬🇧","united kingdom":"🇬🇧","uk":"🇬🇧",
+  "suisse":"🇨🇭","switzerland":"🇨🇭","belgique":"🇧🇪","belgium":"🇧🇪",
+  "pays-bas":"🇳🇱","netherlands":"🇳🇱","hollande":"🇳🇱",
+  "suède":"🇸🇪","sweden":"🇸🇪","norvège":"🇳🇴","norway":"🇳🇴",
+  "danemark":"🇩🇰","denmark":"🇩🇰","finlande":"🇫🇮","finland":"🇫🇮",
+  "pologne":"🇵🇱","poland":"🇵🇱","portugal":"🇵🇹","autriche":"🇦🇹","austria":"🇦🇹",
+  "grèce":"🇬🇷","greece":"🇬🇷","irlande":"🇮🇪","ireland":"🇮🇪",
+  "tchéquie":"🇨🇿","czech republic":"🇨🇿","hongrie":"🇭🇺","hungary":"🇭🇺",
+  "roumanie":"🇷🇴","romania":"🇷🇴","luxembourg":"🇱🇺","croatie":"🇭🇷","croatia":"🇭🇷",
+  "bulgarie":"🇧🇬","bulgaria":"🇧🇬","slovaquie":"🇸🇰","slovakia":"🇸🇰",
+  "slovénie":"🇸🇮","slovenia":"🇸🇮","lituanie":"🇱🇹","lithuania":"🇱🇹",
+  "lettonie":"🇱🇻","latvia":"🇱🇻","estonie":"🇪🇪","estonia":"🇪🇪",
+  "islande":"🇮🇸","iceland":"🇮🇸","serbie":"🇷🇸","serbia":"🇷🇸",
+  "ukraine":"🇺🇦","malte":"🇲🇹","malta":"🇲🇹","chypre":"🇨🇾","cyprus":"🇨🇾",
+  "monténégro":"🇲🇪","albanie":"🇦🇱","bosnie":"🇧🇦","macédoine":"🇲🇰",
+  "moldavie":"🇲🇩","moldova":"🇲🇩","biélorussie":"🇧🇾","belarus":"🇧🇾",
+  "andorre":"🇦🇩","monaco":"🇲🇨","liechtenstein":"🇱🇮",
+  "chine":"🇨🇳","china":"🇨🇳","japon":"🇯🇵","japan":"🇯🇵",
+  "corée du sud":"🇰🇷","south korea":"🇰🇷","korea":"🇰🇷","corée":"🇰🇷",
+  "inde":"🇮🇳","india":"🇮🇳","vietnam":"🇻🇳","viet nam":"🇻🇳",
+  "thaïlande":"🇹🇭","thailand":"🇹🇭","singapour":"🇸🇬","singapore":"🇸🇬",
+  "malaisie":"🇲🇾","malaysia":"🇲🇾","indonésie":"🇮🇩","indonesia":"🇮🇩",
+  "philippines":"🇵🇭","taiwan":"🇹🇼","hong kong":"🇭🇰","myanmar":"🇲🇲",
+  "cambodge":"🇰🇭","cambodia":"🇰🇭","laos":"🇱🇦","bangladesh":"🇧🇩",
+  "pakistan":"🇵🇰","sri lanka":"🇱🇰","népal":"🇳🇵","nepal":"🇳🇵",
+  "mongolie":"🇲🇳","kazakhstan":"🇰🇿","ouzbékistan":"🇺🇿","uzbekistan":"🇺🇿",
+  "états-unis":"🇺🇸","etats-unis":"🇺🇸","usa":"🇺🇸","united states":"🇺🇸",
+  "canada":"🇨🇦","mexique":"🇲🇽","mexico":"🇲🇽",
+  "brésil":"🇧🇷","bresil":"🇧🇷","brazil":"🇧🇷",
+  "argentine":"🇦🇷","argentina":"🇦🇷","colombie":"🇨🇴","colombia":"🇨🇴",
+  "chili":"🇨🇱","chile":"🇨🇱","pérou":"🇵🇪","perou":"🇵🇪","peru":"🇵🇪",
+  "venezuela":"🇻🇪","équateur":"🇪🇨","ecuador":"🇪🇨","bolivie":"🇧🇴","bolivia":"🇧🇴",
+  "paraguay":"🇵🇾","uruguay":"🇺🇾","cuba":"🇨🇺","panama":"🇵🇦","costa rica":"🇨🇷",
+  "maroc":"🇲🇦","morocco":"🇲🇦","algérie":"🇩🇿","algerie":"🇩🇿","algeria":"🇩🇿",
+  "tunisie":"🇹🇳","tunisia":"🇹🇳","sénégal":"🇸🇳","senegal":"🇸🇳",
+  "côte d'ivoire":"🇨🇮","cote d'ivoire":"🇨🇮","ivory coast":"🇨🇮",
+  "cameroun":"🇨🇲","cameroon":"🇨🇲","kenya":"🇰🇪",
+  "afrique du sud":"🇿🇦","south africa":"🇿🇦","nigeria":"🇳🇬","ghana":"🇬🇭",
+  "éthiopie":"🇪🇹","ethiopie":"🇪🇹","ethiopia":"🇪🇹","tanzanie":"🇹🇿","tanzania":"🇹🇿",
+  "ouganda":"🇺🇬","uganda":"🇺🇬","rwanda":"🇷🇼","mali":"🇲🇱","burkina faso":"🇧🇫",
+  "guinée":"🇬🇳","guinea":"🇬🇳","madagascar":"🇲🇬","mozambique":"🇲🇿","angola":"🇦🇴",
+  "egypte":"🇪🇬","égypte":"🇪🇬","egypt":"🇪🇬","libye":"🇱🇾","libya":"🇱🇾",
+  "mauritanie":"🇲🇷","niger":"🇳🇪","tchad":"🇹🇩","chad":"🇹🇩",
+  "bénin":"🇧🇯","togo":"🇹🇬","gabon":"🇬🇦","congo":"🇨🇬",
+  "république démocratique du congo":"🇨🇩","rd congo":"🇨🇩",
+  "maurice":"🇲🇺","mauritius":"🇲🇺","île maurice":"🇲🇺",
+  "namibie":"🇳🇦","namibia":"🇳🇦","botswana":"🇧🇼","zimbabwe":"🇿🇼",
+  "zambie":"🇿🇲","zambia":"🇿🇲","seychelles":"🇸🇨","djibouti":"🇩🇯",
+  "burundi":"🇧🇮","soudan":"🇸🇩","sudan":"🇸🇩",
+  "arabie saoudite":"🇸🇦","saudi arabia":"🇸🇦",
+  "émirats arabes unis":"🇦🇪","emirats arabes unis":"🇦🇪","uae":"🇦🇪","united arab emirates":"🇦🇪",
+  "qatar":"🇶🇦","koweït":"🇰🇼","koweit":"🇰🇼","kuwait":"🇰🇼",
+  "bahreïn":"🇧🇭","bahrein":"🇧🇭","bahrain":"🇧🇭","oman":"🇴🇲",
+  "jordanie":"🇯🇴","jordan":"🇯🇴","liban":"🇱🇧","lebanon":"🇱🇧",
+  "israël":"🇮🇱","israel":"🇮🇱","turquie":"🇹🇷","turkey":"🇹🇷",
+  "iran":"🇮🇷","irak":"🇮🇶","iraq":"🇮🇶","yémen":"🇾🇪","yemen":"🇾🇪",
+  "australie":"🇦🇺","australia":"🇦🇺","nouvelle-zélande":"🇳🇿","new zealand":"🇳🇿",
+  "papouasie":"🇵🇬","fidji":"🇫🇯","fiji":"🇫🇯",
 };
 
 /**
@@ -1144,12 +875,9 @@ const FLAGS_ND = Object.entries(FLAGS).map(([k, f]) => [deburr(k), f]);
 
 function getFlag(country) {
   const low = deburr(country);
-  const match = FLAGS_ND.find(([name]) => name === low)
-    || (low && FLAGS_ND.find(([name]) => low.includes(name)));
-  const code = match ? match[1] : "unknown";
-  // Decorative: the country name remains readable if the CDN is unavailable.
-  if (code === "unknown") return "";
-  return `<img class="flag-icon" src="https://flagcdn.com/${code}.svg" width="24" height="18" alt="" aria-hidden="true" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`;
+  for (const [k, f] of FLAGS_ND) if (k === low) return f;
+  for (const [k, f] of FLAGS_ND) if (low.includes(k) || k.includes(low)) return f;
+  return "🏳️";
 }
 
 // ── ZONES ────────────────────────────────────────────────────────────────────
@@ -1211,16 +939,15 @@ window.addEventListener("DOMContentLoaded", () => {
   // Durée et tri ne dépendent pas des données : on les monte tout de suite
   updateDurationLabel();
   updateSortLabel();
-  restorePreferences();
-  startScraping(false);
+  loadOffers();
 });
 
-async function loadOffers(loadingId = startGlobeLoading()) {
-  const generation = refreshGeneration;
+async function loadOffers() {
   showSkeletons();
   try {
-    const data = await fetchJSON(`${API_BASE}/api/offers?limit=2000`);
-    if (generation !== refreshGeneration) return;
+    const res = await fetch(`${API_BASE}/api/offers?limit=2000`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
     const all = data.offers || [];
 
     for (const o of all) o._zone = zoneOf(o.country);
@@ -1231,31 +958,26 @@ async function loadOffers(loadingId = startGlobeLoading()) {
     buildCountryIndex(all);
     populateSectorFilter(currentTab === "vie" ? vieOffers : wtjOffers);
     applyFilters();
-    await loadMeta();
-  } catch (error) {
-    if (generation !== refreshGeneration) return;
-    setStatus("error", `Impossible de charger les annonces. ${error.message}`);
-    setStatusDot("error");
+    loadMeta();
+  } catch {
     document.getElementById("offers-list").innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
         <div class="empty-title">Aucune donnée disponible</div>
         <div class="empty-sub">Lance un scraping pour récupérer les offres VIE.</div>
       </div>`;
-  } finally {
-    if (generation === refreshGeneration) await finishGlobeLoading(loadingId);
   }
 }
 
 async function loadMeta() {
-  const generation = refreshGeneration;
   try {
-    const data = await fetchJSON(`${API_BASE}/api/stats`);
-    if (generation !== refreshGeneration) return;
+    const res = await fetch(`${API_BASE}/api/stats`);
+    if (!res.ok) return;
+    const data = await res.json();
     if (data.exported_at) {
       const d = new Date(data.exported_at);
       document.getElementById("last-update").textContent =
-        "Dernière mise à jour des annonces : " + d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+        d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     }
     setStatusDot("ok");
   } catch {}
@@ -1277,7 +999,7 @@ function buildCountryIndex(all) {
     if (!byKey.has(key)) byKey.set(key, { key, label: titleCase(raw), count: 0 });
     byKey.get(key).count++;
   }
-  countryIndex = [...byKey.values()].sort((a, b) => a.label.localeCompare(b.label, "fr", { sensitivity: "base" }));
+  countryIndex = [...byKey.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "fr"));
 
   // Une sélection peut pointer vers un pays disparu après un rafraîchissement
   for (const k of [...selectedCountries]) if (!byKey.has(k)) selectedCountries.delete(k);
@@ -1319,7 +1041,7 @@ function updateCountryLabel() {
   const only = n === 1 ? countryIndex.find(c => c.key === [...selectedCountries][0]) : null;
 
   if (n === 0)      setToggle("dd-country", "Pays", false);
-  else if (only)    setToggle("dd-country", `${getFlag(only.key)} ${escHtml(only.label)}`, true, true);
+  else if (only)    setToggle("dd-country", `${getFlag(only.key)} ${only.label}`, true);
   else              setToggle("dd-country", `Pays <span class="dd-badge">${n}</span>`, true, true);
 }
 
@@ -1515,7 +1237,7 @@ function populateSectorFilter(offers) {
   }
   sectorIndex = [...counts.entries()]
     .map(([label, count]) => ({ value: label, label, count, icon: getSectorIcon(label) }))
-    .sort((a, b) => a.label.localeCompare(b.label, "fr", { sensitivity: "base" }));
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "fr"));
 
   // Un secteur absent de l'onglet courant ne doit pas rester filtré en silence
   if (filterSector && !counts.has(filterSector)) filterSector = "";
@@ -1524,7 +1246,6 @@ function populateSectorFilter(offers) {
 
 // ── FILTRES ───────────────────────────────────────────────────────────────────
 function applyFilters() {
-  savePreferences();
   const keyword  = document.getElementById("f-keyword").value.toLowerCase().trim();
   const duration = filterDuration;
   const sector   = filterSector.toLowerCase();
@@ -1639,8 +1360,7 @@ function offerCardHTML(o, isLast = false, isFirst = false) {
   const locationParts = [city, o.country ? (o.country.charAt(0) + o.country.slice(1).toLowerCase()) : ""].filter(Boolean);
   const location = locationParts.join(", ");
 
-  const url = safeOfferURL(o.link);
-  return `<a class="offer-card" ${url ? `href="${escHtml(url)}" target="_blank" rel="noopener"` : 'aria-disabled="true"'}>
+  return `<a class="offer-card" href="${o.link||'#'}" target="_blank" rel="noopener">
     <div class="offer-title">${escHtml(o.title)}</div>
     <div class="offer-company">${escHtml(o.company)}</div>
     <div class="offer-meta">
@@ -1657,120 +1377,54 @@ function offerCardHTML(o, isLast = false, isFirst = false) {
 }
 
 // ── SCRAPING ─────────────────────────────────────────────────────────────────
-let refreshGeneration = 0;
-const activeRequests = new Set();
-
-async function fetchJSON(url, options = {}, timeout = 20000) {
-  const controller = new AbortController();
-  activeRequests.add(controller);
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal, cache: "no-store" });
-    if (!response.ok) {
-      const error = new Error(`Requête impossible (${response.status}).`);
-      error.status = response.status;
-      throw error;
-    }
-    return await response.json(); // Timeout also covers a stalled response body.
-  } catch (error) {
-    if (error.name === "AbortError") throw new Error("Le serveur met trop de temps à répondre.");
-    throw error;
-  } finally {
-    clearTimeout(timer);
-    activeRequests.delete(controller);
-  }
-}
-
-async function startScraping(force = true) {
+async function startScraping() {
   const btn = document.getElementById("btn-scrape");
-  if (btn.disabled) return;
   btn.disabled = true;
-  const generation = ++refreshGeneration;
-  const loadingId = startGlobeLoading();
-  dismissedStatusType = null;
-  btn.setAttribute("aria-busy", "true");
-  btn.setAttribute("aria-label", "Actualisation en cours");
-  btn.title = "Recherche des dernières annonces en cours";
-  updateProgress("Vérification des dernières annonces…");
+  document.getElementById("btn-label").textContent = "En cours…";
+  setStatus("info", "Scraping lancé — durée estimée : 1 à 2 minutes…");
   setStatusDot("running");
-  let refreshFailed = false;
+
   try {
-    let response;
-    try {
-      response = await fetchJSON(`${API_BASE}/api/scrape`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "all", force })
-      });
-    } catch (error) {
-      if (error.status !== 409) throw error;
-      updateProgress("Une recherche est déjà en cours, attente de ses résultats…");
-    }
-    if (generation !== refreshGeneration) return;
-    if (response?.cached) {
-      setStatus("success", "Annonces à jour — actualisées il y a moins de 15 minutes.");
-    } else {
-      const data = await pollStatus(generation);
-      if (generation !== refreshGeneration) return;
-      if (data.success !== true) throw new Error(data.error || "La recherche a échoué.");
-      setStatus("success", `Recherche terminée — ${data.total_offers} offres récupérées`);
-    }
-  } catch (error) {
-    if (generation !== refreshGeneration) return;
-    refreshFailed = true;
-    setStatus("error", `${error.message} Affichage des annonces disponibles.`);
-  } finally {
-    if (generation === refreshGeneration) {
-      try {
-        await loadOffers(loadingId);
-        if (refreshFailed) setStatusDot("error");
-      } finally {
-        if (generation === refreshGeneration) resetBtn();
-      }
-    }
-  }
-}
-
-function updateProgress(message) {
-  document.getElementById("globe-loading-status").textContent = message;
-  setStatus("info", message);
-}
-
-async function pollStatus(generation) {
-  const deadline = Date.now() + 5 * 60 * 1000;
-  while (generation === refreshGeneration && Date.now() < deadline) {
-    const data = await fetchJSON(`${API_BASE}/api/status`, {}, Math.min(20000, deadline - Date.now()));
-    if (generation !== refreshGeneration) return data;
-    if (!data.running) return data;
-    const labels = { vie: "Business France", wtj: "Welcome to the Jungle" };
-    const progress = Object.entries(data.by_source || {}).map(([source, state]) => {
-      const text = typeof state === "number" ? `${state} annonces récupérées`
-        : state === "running" ? "recherche en cours"
-        : state === "error" ? "indisponible, anciennes annonces conservées" : "en attente";
-      return `${labels[source] || source} : ${text}`;
+    const res = await fetch(`${API_BASE}/api/scrape`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: "all" })
     });
-    updateProgress(progress.join(" · ") || "Recherche des dernières annonces…");
-    await new Promise(resolve => setTimeout(resolve, Math.min(3000, Math.max(0, deadline - Date.now()))));
+    if (res.status === 409) setStatus("info", "Un scraping est déjà en cours…");
+    else if (!res.ok) throw new Error();
+    pollInterval = setInterval(pollStatus, 5000);
+  } catch {
+    setStatus("error", "Impossible de joindre l'API. Vérifiez que api.py est lancé.");
+    resetBtn();
   }
-  throw new Error("La recherche prend plus de temps que prévu.");
 }
 
-window.addEventListener("pagehide", () => {
-  ++refreshGeneration;
-  for (const controller of activeRequests) controller.abort();
-});
-window.addEventListener("pageshow", event => {
-  if (event.persisted) {
+async function pollStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/api/status`);
+    const data = await res.json();
+    if (!data.running) {
+      clearInterval(pollInterval); pollInterval = null;
+      if (data.success === true) {
+        setStatus("success", `Scraping terminé — ${data.total_offers} offres récupérées`);
+        setStatusDot("ok");
+        await loadOffers();
+      } else if (data.success === false) {
+        setStatus("error", `Erreur : ${data.error}`);
+        setStatusDot("error");
+      }
+      resetBtn();
+    }
+  } catch {
+    clearInterval(pollInterval);
+    setStatus("error", "Impossible de vérifier le statut.");
     resetBtn();
-    startScraping(false);
   }
-});
+}
 
 function resetBtn() {
   const btn = document.getElementById("btn-scrape");
   btn.disabled = false;
-  btn.setAttribute("aria-busy", "false");
-  btn.setAttribute("aria-label", "Actualiser les annonces");
-  btn.title = "Forcer une nouvelle recherche, même si les annonces sont déjà à jour";
+  document.getElementById("btn-label").textContent = "↻ Toujours pas assez frais?";
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -1800,50 +1454,10 @@ function showSkeletons() {
     </div>`).join("");
 }
 
-let statusTimer = null;
-let dismissedStatusType = null;
-let currentStatusType = null;
-
-function dismissStatus() {
-  clearTimeout(statusTimer);
-  dismissedStatusType = currentStatusType;
-  const toast = document.getElementById("status-bar");
-  const hadFocus = toast.contains(document.activeElement);
-  toast.hidden = true;
-  if (hadFocus) {
-    const refresh = document.getElementById("btn-scrape");
-    (refresh.disabled ? document.getElementById("f-keyword") : refresh).focus();
-  }
-}
-
-function readableStatus(msg) {
-  if (msg.includes("ALGOLIA_API_KEY") || msg.includes("ALGOLIA_APP_ID")) {
-    return "Welcome to the Jungle n’est pas configuré sur le serveur. Les annonces disponibles restent accessibles ; les anciennes annonces de cette source sont conservées.";
-  }
-  if (msg.includes("Sources non actualisées")) {
-    const sources = [];
-    if (msg.includes("vie :")) sources.push("Business France");
-    if (msg.includes("wtj :")) sources.push("Welcome to the Jungle");
-    return `Impossible d’actualiser ${sources.join(" et ") || "certaines sources"}. Les dernières annonces disponibles ont été conservées.`;
-  }
-  return msg;
-}
-
 function setStatus(type, msg) {
-  clearTimeout(statusTimer);
-  if (type === dismissedStatusType) return; // Polling must not reopen a dismissed progress message.
-  currentStatusType = type;
-  const toast = document.getElementById("status-bar");
-  toast.className = `toast ${type}`;
-  document.getElementById("toast-title").textContent =
-    type === "error" ? "Actualisation indisponible" : type === "success" ? "Annonces à jour" : "Actualisation en cours";
-  document.getElementById("toast-icon").textContent = type === "error" ? "!" : type === "success" ? "✓" : "↻";
-  toast.hidden = false;
-  document.getElementById("toast-message").textContent = readableStatus(msg);
-  // Errors remain available until dismissed. Informational messages use the same neutral style.
-  if (type === "success") statusTimer = setTimeout(() => {
-    if (!toast.contains(document.activeElement) && !toast.matches(":hover")) toast.hidden = true;
-  }, 6000);
+  const bar = document.getElementById("status-bar");
+  bar.className = `status-bar visible ${type}`;
+  bar.textContent = msg;
 }
 
 function setStatusDot(state) {

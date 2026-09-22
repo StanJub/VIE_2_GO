@@ -15,6 +15,7 @@ Utilisation:
 import requests
 import json
 import re
+import tempfile
 import argparse                          # ✅ CORRECTION 1 : remplace sys.argv
 import os                                # ✅ CORRECTION 1 : pour lire les variables d'env
 from datetime import datetime
@@ -34,6 +35,23 @@ except ImportError:
 # ============================================================================
 # MODÈLE DE DONNÉES UNIFIÉ
 # ============================================================================
+
+def atomic_write_json(filename, data):
+    """Publish a complete JSON file; readers always see the old or new version."""
+    destination = os.path.abspath(filename)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                                         dir=os.path.dirname(destination), delete=False) as f:
+            temporary = f.name
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, destination)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+
 
 class ScrapingError(RuntimeError):
     """
@@ -654,8 +672,7 @@ class VIEUnifier:
             "offers": [o.to_dict() for o in self.offers]
         }
         
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        atomic_write_json(filename, data)
         
         print(f"\n✓ Données exportées dans {filename}")
         return filename
