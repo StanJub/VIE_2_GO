@@ -12,6 +12,7 @@ Utilisation:
     python3 unify_vie_offers.py --output mes_offres.json  # Nom de fichier personnalisé
 """
 
+from countries import normalize_offer, normalize_cache, country_identity
 import requests
 import json
 import re
@@ -101,6 +102,17 @@ class UnifiedOffer:
     # Métadonnées
     scraped_at: str = ""
     
+    country_code: Optional[str] = None
+    country_raw: Optional[str] = None
+    country_status: str = "unresolved"
+
+    def __post_init__(self):
+        normalized = normalize_offer({"country": self.country,
+                                      "country_raw": self.country if self.country_raw is None else self.country_raw,
+                                      "country_code": self.country_code, "source": self.source.value, "city": self.city})
+        for field in ("country", "country_raw", "country_code", "country_status"):
+            setattr(self, field, normalized[field])
+
     def to_dict(self) -> Dict:
         """Convertit l'offre en dictionnaire (l'Enum est sérialisé en string)"""
         d = asdict(self)
@@ -647,7 +659,7 @@ class VIEUnifier:
             key = (
                 offer.title.lower().strip(),
                 offer.company.lower().strip(),
-                offer.country.lower().strip()
+                country_identity(offer.to_dict())
             )
             if key not in seen:
                 seen.add(key)
@@ -672,7 +684,7 @@ class VIEUnifier:
             "offers": [o.to_dict() for o in self.offers]
         }
         
-        atomic_write_json(filename, data)
+        atomic_write_json(filename, normalize_cache(data))
         
         print(f"\n✓ Données exportées dans {filename}")
         return filename
