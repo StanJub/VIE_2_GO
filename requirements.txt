@@ -3,3 +3,5 @@ flask-cors
 requests
 python-dotenv
 gunicorn
+Babel==2.18.0
+pycountry==26.2.16

@@ -23,6 +23,7 @@ Déploiement Railway :
     - Ajouter les variables ALGOLIA_API_KEY et ALGOLIA_APP_ID
 """
 
+from countries import normalize_cache, normalize_offer, country_identity, resolve_country
 import json
 import os
 import threading
@@ -72,7 +73,8 @@ def unique_offers(offers):
     seen = set()
     result = []
     for offer in offers:
-        key = tuple(str(offer.get(field, "")).strip().lower() for field in ("title", "company", "country"))
+        offer = normalize_offer(offer)
+        key = tuple(str(offer.get(field, "")).strip().lower() for field in ("title", "company")) + (country_identity(offer),)
         if key not in seen:
             seen.add(key)
             result.append(offer)
@@ -121,7 +123,7 @@ def run_scraping(source: str = "all"):
                             exported_at=datetime.now(timezone.utc).isoformat(),
                             sources=sorted({o["source"] for o in offers}),
                             source_refreshed_at=refreshed)
-            atomic_write_json(OFFERS_FILE, {"metadata": metadata, "offers": offers})
+            atomic_write_json(OFFERS_FILE, normalize_cache({"metadata": metadata, "offers": offers}))
         with scrape_lock:
             scrape_status["total_offers"] = len(unique_offers(offers))
             scrape_status["success"] = not errors
@@ -152,7 +154,7 @@ def load_offers():
             data = json.load(f)
             if not isinstance(data, dict) or not isinstance(data.get("offers"), list) or not isinstance(data.get("metadata"), dict):
                 return None, "Format du cache invalide."
-            return data, None
+            return normalize_cache(data), None
     except (OSError, json.JSONDecodeError):
         return None, "Le fichier cache est corrompu. Relancez un scraping."
 
@@ -193,7 +195,9 @@ def get_offers():
         offers = [o for o in offers if source.lower() in o["source"].lower()]
 
     if country:
-        offers = [o for o in offers if country.lower() in o["country"].lower()]
+        code = resolve_country(country)
+        offers = [o for o in offers if o.get("country_code") == code] if code else [
+            o for o in offers if country.lower() in o["country"].lower()]
 
     if keyword:
         kw = keyword.lower()

@@ -1068,88 +1068,17 @@ function getSectorIcon(s) {
 }
 
 // ── DRAPEAUX ────────────────────────────────────────────────────────────────
-const FLAGS = {
-  "france":"fr","allemagne":"de","germany":"de","espagne":"es","spain":"es",
-  "italie":"it","italy":"it","royaume-uni":"gb","united kingdom":"gb","uk":"gb",
-  "suisse":"ch","switzerland":"ch","belgique":"be","belgium":"be",
-  "pays-bas":"nl","netherlands":"nl","hollande":"nl",
-  "suède":"se","sweden":"se","norvège":"no","norway":"no",
-  "danemark":"dk","denmark":"dk","finlande":"fi","finland":"fi",
-  "pologne":"pl","poland":"pl","portugal":"pt","autriche":"at","austria":"at",
-  "grèce":"gr","greece":"gr","irlande":"ie","ireland":"ie",
-  "tchéquie":"cz","czech republic":"cz","hongrie":"hu","hungary":"hu",
-  "roumanie":"ro","romania":"ro","luxembourg":"lu","croatie":"hr","croatia":"hr",
-  "bulgarie":"bg","bulgaria":"bg","slovaquie":"sk","slovakia":"sk",
-  "slovénie":"si","slovenia":"si","lituanie":"lt","lithuania":"lt",
-  "lettonie":"lv","latvia":"lv","estonie":"ee","estonia":"ee",
-  "islande":"is","iceland":"is","serbie":"rs","serbia":"rs",
-  "ukraine":"ua","malte":"mt","malta":"mt","chypre":"cy","cyprus":"cy",
-  "monténégro":"me","albanie":"al","bosnie":"ba","macédoine":"mk",
-  "moldavie":"md","moldova":"md","biélorussie":"by","belarus":"by",
-  "andorre":"ad","monaco":"mc","liechtenstein":"li",
-  "chine":"cn","china":"cn","japon":"jp","japan":"jp",
-  "corée du sud":"kr","south korea":"kr","korea":"kr","corée":"kr",
-  "inde":"in","india":"in","vietnam":"vn","viet nam":"vn",
-  "thaïlande":"th","thailand":"th","singapour":"sg","singapore":"sg",
-  "malaisie":"my","malaysia":"my","indonésie":"id","indonesia":"id",
-  "philippines":"ph","taiwan":"tw","hong kong":"hk","myanmar":"mm",
-  "cambodge":"kh","cambodia":"kh","laos":"la","bangladesh":"bd",
-  "pakistan":"pk","sri lanka":"lk","népal":"np","nepal":"np",
-  "mongolie":"mn","kazakhstan":"kz","ouzbékistan":"uz","uzbekistan":"uz",
-  "états-unis":"us","etats-unis":"us","usa":"us","united states":"us",
-  "canada":"ca","mexique":"mx","mexico":"mx",
-  "brésil":"br","bresil":"br","brazil":"br",
-  "argentine":"ar","argentina":"ar","colombie":"co","colombia":"co",
-  "chili":"cl","chile":"cl","pérou":"pe","perou":"pe","peru":"pe",
-  "venezuela":"ve","équateur":"ec","ecuador":"ec","bolivie":"bo","bolivia":"bo",
-  "paraguay":"py","uruguay":"uy","cuba":"cu","panama":"pa","costa rica":"cr",
-  "maroc":"ma","morocco":"ma","algérie":"dz","algerie":"dz","algeria":"dz",
-  "tunisie":"tn","tunisia":"tn","sénégal":"sn","senegal":"sn",
-  "côte d'ivoire":"ci","cote d'ivoire":"ci","ivory coast":"ci",
-  "cameroun":"cm","cameroon":"cm","kenya":"ke",
-  "afrique du sud":"za","south africa":"za","nigeria":"ng","ghana":"gh",
-  "éthiopie":"et","ethiopie":"et","ethiopia":"et","tanzanie":"tz","tanzania":"tz",
-  "ouganda":"ug","uganda":"ug","rwanda":"rw","mali":"ml","burkina faso":"bf",
-  "guinée":"gn","guinea":"gn","madagascar":"mg","mozambique":"mz","angola":"ao",
-  "egypte":"eg","égypte":"eg","egypt":"eg","libye":"ly","libya":"ly",
-  "mauritanie":"mr","niger":"ne","tchad":"td","chad":"td",
-  "bénin":"bj","togo":"tg","gabon":"ga","congo":"cg",
-  "république démocratique du congo":"cd","rd congo":"cd",
-  "maurice":"mu","mauritius":"mu","île maurice":"mu",
-  "namibie":"na","namibia":"na","botswana":"bw","zimbabwe":"zw",
-  "zambie":"zm","zambia":"zm","seychelles":"sc","djibouti":"dj",
-  "burundi":"bi","soudan":"sd","sudan":"sd",
-  "arabie saoudite":"sa","saudi arabia":"sa",
-  "émirats arabes unis":"ae","emirats arabes unis":"ae","uae":"ae","united arab emirates":"ae",
-  "qatar":"qa","koweït":"kw","koweit":"kw","kuwait":"kw",
-  "bahreïn":"bh","bahrein":"bh","bahrain":"bh","oman":"om",
-  "jordanie":"jo","jordan":"jo","liban":"lb","lebanon":"lb",
-  "israël":"il","israel":"il","turquie":"tr","turkey":"tr",
-  "iran":"ir","irak":"iq","iraq":"iq","yémen":"ye","yemen":"ye",
-  "australie":"au","australia":"au","nouvelle-zélande":"nz","new zealand":"nz",
-  "papouasie":"pg","fidji":"fj","fiji":"fj",
-};
-
-/**
- * Minuscules sans accents. Business France écrit les pays en capitales non
- * accentuées ("SUEDE", "GRECE", "COREE DU SUD") : sans cette normalisation,
- * ils ne correspondent ni aux drapeaux ni aux zones géographiques.
- */
 function deburr(s) {
   return (s || "").toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-// Index sans accents, construit une fois (getFlag est appelé par offre affichée)
-const FLAGS_ND = Object.entries(FLAGS).map(([k, f]) => [deburr(k), f]);
+function countryKey(offer) {
+  return offer.country_code || `raw:${deburr(offer.country_raw || offer.country)}`;
+}
 
-function getFlag(country) {
-  const low = deburr(country);
-  const match = FLAGS_ND.find(([name]) => name === low)
-    || (low && FLAGS_ND.find(([name]) => low.includes(name)));
-  const code = match ? match[1] : "unknown";
-  // Decorative: the country name remains readable if the CDN is unavailable.
-  if (code === "unknown") return "";
-  return `<img class="flag-icon" src="https://flagcdn.com/${code}.svg" width="24" height="18" alt="" aria-hidden="true" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`;
+function getFlag(code) {
+  if (!/^[A-Z]{2}$/.test(code || "")) return "";
+  return `<img class="flag-icon" src="https://flagcdn.com/${code.toLowerCase()}.svg" width="24" height="18" alt="" aria-hidden="true" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`;
 }
 
 // ── ZONES ────────────────────────────────────────────────────────────────────
@@ -1223,7 +1152,7 @@ async function loadOffers(loadingId = startGlobeLoading()) {
     if (generation !== refreshGeneration) return;
     const all = data.offers || [];
 
-    for (const o of all) o._zone = zoneOf(o.country);
+    for (const o of all) o._zone = zoneOf(o.country) || zoneOf(o.country_raw);
 
     vieOffers = all.filter(o => o.source.includes("Business France") || o.source.includes("VIE"));
     wtjOffers = all.filter(o => o.source.includes("Welcome") || o.source.includes("WTJ"));
@@ -1263,22 +1192,27 @@ async function loadMeta() {
 
 // ── FILTRE PAYS (multi-sélection) ─────────────────────────────────────────────
 /**
- * Construit la liste des pays depuis les offres, triée par nombre d'offres.
- * Les deux sources n'écrivent pas les pays pareil ("ALLEMAGNE" côté Business
- * France, "Germany" côté WTJ) : on regroupe sur la version minuscule et on
- * affiche une casse propre.
+ * Regroupe les sources par code ISO puis trie les libellés français.
  */
 function buildCountryIndex(all) {
   const byKey = new Map();
   for (const o of all) {
     const raw = (o.country || "").trim();
     if (!raw) continue;
-    const key = raw.toLowerCase();
-    if (!byKey.has(key)) byKey.set(key, { key, label: titleCase(raw), count: 0 });
+    const key = countryKey(o);
+    if (!byKey.has(key)) byKey.set(key, { key, label: raw, count: 0 });
     byKey.get(key).count++;
   }
   countryIndex = [...byKey.values()].sort((a, b) => a.label.localeCompare(b.label, "fr", { sensitivity: "base" }));
 
+  // Migrate previously saved labels using original source values still in the cache.
+  const legacy = new Map();
+  for (const o of all) {
+    for (const label of [o.country, o.country_raw]) {
+      if (label) legacy.set(label.trim().toLowerCase(), countryKey(o));
+    }
+  }
+  selectedCountries = new Set([...selectedCountries].map(k => byKey.has(k) ? k : (legacy.get(k) || k)));
   // Une sélection peut pointer vers un pays disparu après un rafraîchissement
   for (const k of [...selectedCountries]) if (!byKey.has(k)) selectedCountries.delete(k);
 
@@ -1533,7 +1467,7 @@ function applyFilters() {
   // chaque zone « toutes choses égales par ailleurs ».
   const matchesExceptZone = o => {
     if (keyword && !o.title.toLowerCase().includes(keyword)) return false;
-    if (selectedCountries.size && !selectedCountries.has((o.country || "").trim().toLowerCase())) return false;
+    if (selectedCountries.size && !selectedCountries.has(countryKey(o))) return false;
     if (duration && !(o.duration_months && String(o.duration_months).includes(duration))) return false;
     if (sector && !(o.sectors || "").toLowerCase().includes(sector)) return false;
     return true;
@@ -1601,14 +1535,15 @@ function renderGroupedByCountry(offers) {
   const groups = [];
   const seen = new Map();
   for (const o of offers) {
-    const key = (o.country || "—").trim();
+    const key = countryKey(o);
     if (!seen.has(key)) { seen.set(key, []); groups.push(key); }
     seen.get(key).push(o);
   }
 
-  document.getElementById("offers-list").innerHTML = groups.map(country => {
-    const items = seen.get(country);
-    const flag = getFlag(country);
+  document.getElementById("offers-list").innerHTML = groups.map(key => {
+    const items = seen.get(key);
+    const country = items[0].country || "—";
+    const flag = getFlag(items[0].country_code);
     return `
       <div class="country-group">
         <div class="country-banner">

@@ -223,3 +223,33 @@ un service gratuit, à partir des codes pays. Ils ne dépendent pas des polices
 emoji installées sur Windows, macOS ou Linux. Si une image ne peut pas être
 chargée, le nom du pays reste visible. Le filtre pays est trié alphabétiquement
 selon la locale française.
+
+
+## Normalisation des pays
+
+`countries.py` centralise la résolution pour toutes les sources. Le référentiel
+ISO de pycountry définit les codes valides ; Babel fournit les noms français et
+les traductions reconnues (français, anglais, allemand, espagnol, italien,
+portugais). Aucun appel réseau ni rapprochement approximatif n’est nécessaire.
+
+Chaque annonce conserve `country_raw` (valeur originale), `country_code` (ISO
+alpha-2 ou null), `country` (libellé français ou valeur originale) et
+`country_status` (`resolved` / `unresolved`). La normalisation intervient à la
+création d’une offre et à la lecture des anciens caches. Les filtres, groupes
+et drapeaux utilisent le code ; les valeurs inconnues restent distinctes.
+
+Le cache existant a été migré sans supprimer d’annonces ni changer ses dates de
+fraîcheur. `metadata.unresolved_countries` liste les valeurs à examiner par
+source. « Congo » est résolu par un code explicite ou une ville reconnue exactement : Pointe-Noire/Brazzaville → CG, Kinshasa → CD. Sans ce contexte, il reste ambigu.
+
+Pour ajouter une source : passer sa valeur pays originale au modèle
+`UnifiedOffer`, et son code ISO à `country_code` si disponible. Étendre
+`LANGUAGES` pour une nouvelle langue, `ALIASES` pour une variante certaine, ou
+`SOURCE_ALIASES` pour une exception documentée propre à une source (clés
+normalisées avec `key`). Ajouter un test pour chaque exception. Ne jamais
+attribuer un pays à une valeur ambiguë sans preuve de la source.
+
+L’API `/api/offers?country=DE` accepte un code ou un nom reconnu. Les anciennes
+sélections locales sont converties à partir des noms présents dans les annonces.
+Références : [pycountry](https://github.com/pycountry/pycountry),
+[Babel](https://babel.pocoo.org/en/latest/api/core.html).
